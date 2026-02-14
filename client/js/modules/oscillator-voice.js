@@ -70,9 +70,11 @@ export class OscillatorVoice {
       const g = note.gainNode.gain;
       g.cancelScheduledValues(now);
       const current = g.value;
-      // Scale proportionally: preserve ADSR envelope position
-      const ratio = oldScaled > 0 ? current / oldScaled : 0;
-      g.setValueAtTime(newScaled * ratio, now);
+      // Update stored envelope ratio from current gain if we can derive it
+      if (oldScaled > 0) {
+        note.envRatio = current / oldScaled;
+      }
+      g.setValueAtTime(newScaled * (note.envRatio ?? 1), now);
     }
   }
 
