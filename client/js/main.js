@@ -350,7 +350,21 @@ function updateTargetBadges(lfoIdx) {
 
 initDragDrop();
 
-// --- Tab switching ---
+// --- Main tab switching (OSC / FX) ---
+const mainTabs = document.querySelectorAll('.main-tab');
+const mainPages = document.querySelectorAll('.main-page');
+
+mainTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    const page = tab.dataset.page;
+    mainTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    mainPages.forEach(p => p.classList.remove('active'));
+    document.getElementById(`page-${page}`).classList.add('active');
+  });
+});
+
+// --- Osc sub-tab switching ---
 const oscTabs = document.querySelectorAll('.osc-tab');
 const oscSections = document.querySelectorAll('.osc-section');
 

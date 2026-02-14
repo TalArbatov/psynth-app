@@ -9,264 +9,285 @@
 <body>
 
 <div id="synth">
-  <h1>Dual Osc Synth</h1>
-
-  <canvas id="waveform-canvas" width="696" height="80"></canvas>
-
-  <div class="osc-tabs">
-    <div class="osc-tab active" data-osc="1">
-      <span class="osc-tab-label">Osc 1</span>
-      <button class="osc-toggle on" id="toggle1">ON</button>
-    </div>
-    <div class="osc-tab" data-osc="2">
-      <span class="osc-tab-label">Osc 2</span>
-      <button class="osc-toggle on" id="toggle2">ON</button>
-    </div>
+  <div class="synth-header">
+    <span class="synth-logo">Dual Osc Synth</span>
   </div>
 
-  <div class="osc-section" id="osc1-section">
-    <div class="osc-content">
-      <div class="controls">
-        <div class="control-group">
-          <label>Waveform</label>
-          <select id="waveform1">
-            <option value="sine">Sine</option>
-            <option value="triangle">Triangle</option>
-            <option value="sawtooth" selected>Sawtooth</option>
-            <option value="square">Square</option>
-          </select>
+  <div class="main-tabs">
+    <div class="main-tab active" data-page="osc">Osc</div>
+    <div class="main-tab" data-page="fx">FX</div>
+  </div>
+
+  <!-- ═══ OSC PAGE ═══ -->
+  <div class="main-page active" id="page-osc">
+    <div class="synth-body">
+      <canvas id="waveform-canvas" width="696" height="80"></canvas>
+
+      <div class="osc-tabs">
+        <div class="osc-tab active" data-osc="1">
+          <span class="osc-tab-label">Osc 1</span>
+          <button class="osc-toggle on" id="toggle1">ON</button>
         </div>
-        <div class="control-group">
-          <label>Volume</label>
-          <input type="range" id="volume1" min="0" max="1" step="0.01" value="0.5">
-          <div class="value-display" id="volume1-val">0.50</div>
-        </div>
-        <div class="control-group">
-          <label>Detune (cents)</label>
-          <input type="range" id="detune1" min="-100" max="100" step="1" value="0">
-          <div class="value-display" id="detune1-val">0</div>
+        <div class="osc-tab" data-osc="2">
+          <span class="osc-tab-label">Osc 2</span>
+          <button class="osc-toggle on" id="toggle2">ON</button>
         </div>
       </div>
-      <div class="controls">
-        <div class="control-group">
-          <label>Unison Voices</label>
-          <input type="range" id="unison-count1" min="1" max="8" step="1" value="1">
-          <div class="value-display" id="unison-count1-val">1</div>
-        </div>
-        <div class="control-group">
-          <label>Unison Detune</label>
-          <input type="range" id="unison-detune1" min="0" max="100" step="1" value="20">
-          <div class="value-display" id="unison-detune1-val">20</div>
-        </div>
-        <div class="control-group">
-          <label>Stereo Spread</label>
-          <input type="range" id="unison-spread1" min="0" max="100" step="1" value="50">
-          <div class="value-display" id="unison-spread1-val">50%</div>
-        </div>
-      </div>
-      <div class="lfo-section">
-        <div class="lfo-header">
-          <span class="lfo-label">LFO</span>
-          <div class="lfo-mod-chip" id="lfo1-chip" draggable="true" data-lfo="0">MOD</div>
-        </div>
-        <div class="controls">
-          <div class="control-group">
-            <label>Waveform</label>
-            <select id="lfo-waveform1">
-              <option value="sine" selected>Sine</option>
-              <option value="triangle">Triangle</option>
-              <option value="square">Square</option>
-              <option value="sawtooth">Sawtooth</option>
-            </select>
-          </div>
-          <div class="control-group">
-            <label>Rate (Hz)</label>
-            <input type="range" id="lfo-rate1" min="0.05" max="20" step="0.05" value="1">
-            <div class="value-display" id="lfo-rate1-val">1.00</div>
-          </div>
-          <div class="control-group">
-            <label>Depth</label>
-            <input type="range" id="lfo-depth1" min="0" max="100" step="1" value="50">
-            <div class="value-display" id="lfo-depth1-val">50%</div>
-          </div>
-        </div>
-        <div class="controls">
-          <div class="control-group">
-            <label>Phase</label>
-            <input type="range" id="lfo-phase1" min="0" max="360" step="1" value="0">
-            <div class="value-display" id="lfo-phase1-val">0°</div>
-          </div>
-          <div class="control-group">
-            <label>Delay (s)</label>
-            <input type="range" id="lfo-delay1" min="0" max="5" step="0.05" value="0">
-            <div class="value-display" id="lfo-delay1-val">0.00</div>
-          </div>
-          <div class="control-group">
-            <label>Fade In (s)</label>
-            <input type="range" id="lfo-fadein1" min="0" max="5" step="0.05" value="0">
-            <div class="value-display" id="lfo-fadein1-val">0.00</div>
-          </div>
-        </div>
-        <div class="lfo-sync-row">
-          <button class="lfo-sync-toggle off" id="lfo-sync1">SYNC</button>
-          <input type="number" class="lfo-bpm-input" id="lfo-bpm1" value="120" min="20" max="300" disabled>
-          <select class="lfo-division-select" id="lfo-division1" disabled>
-            <option value="1/1">1/1</option>
-            <option value="1/2">1/2</option>
-            <option value="1/4" selected>1/4</option>
-            <option value="1/8">1/8</option>
-            <option value="1/16">1/16</option>
-          </select>
-          <button class="lfo-oneshot-toggle off" id="lfo-oneshot1">1-SHOT</button>
-        </div>
-        <div class="lfo-targets" id="lfo1-targets"></div>
-      </div>
-      <div class="filter-section" id="filter1-section" data-drop-target="filter" data-osc="1">
-        <div class="controls">
-          <div class="control-group">
-            <label>Filter</label>
-            <div class="filter-header">
-              <select id="filter-type1">
-                <option value="lowpass" selected>Low Pass</option>
-                <option value="highpass">High Pass</option>
-                <option value="bandpass">Band Pass</option>
+
+      <div class="osc-section" id="osc1-section">
+        <div class="osc-content">
+          <div class="controls">
+            <div class="control-group">
+              <label>Waveform</label>
+              <select id="waveform1">
+                <option value="sine">Sine</option>
+                <option value="triangle">Triangle</option>
+                <option value="sawtooth" selected>Sawtooth</option>
+                <option value="square">Square</option>
               </select>
-              <button class="filter-toggle on" id="filter-toggle1">ON</button>
+            </div>
+            <div class="control-group">
+              <label>Volume</label>
+              <input type="range" id="volume1" min="0" max="1" step="0.01" value="0.5">
+              <div class="value-display" id="volume1-val">0.50</div>
+            </div>
+            <div class="control-group">
+              <label>Detune (cents)</label>
+              <input type="range" id="detune1" min="-100" max="100" step="1" value="0">
+              <div class="value-display" id="detune1-val">0</div>
             </div>
           </div>
-        </div>
-        <canvas class="filter-canvas" id="filter1-canvas" width="560" height="120"></canvas>
-        <div class="filter-values" id="filter1-values"></div>
-      </div>
-      <canvas class="adsr-canvas" id="adsr1-canvas" width="560" height="120"></canvas>
-      <div class="adsr-values" id="adsr1-values"></div>
-    </div>
-  </div>
-
-  <div class="osc-section hidden" id="osc2-section">
-    <div class="osc-content">
-      <div class="controls">
-        <div class="control-group">
-          <label>Waveform</label>
-          <select id="waveform2">
-            <option value="sine">Sine</option>
-            <option value="triangle" selected>Triangle</option>
-            <option value="sawtooth">Sawtooth</option>
-            <option value="square">Square</option>
-          </select>
-        </div>
-        <div class="control-group">
-          <label>Volume</label>
-          <input type="range" id="volume2" min="0" max="1" step="0.01" value="0.5">
-          <div class="value-display" id="volume2-val">0.50</div>
-        </div>
-        <div class="control-group">
-          <label>Detune (cents)</label>
-          <input type="range" id="detune2" min="-100" max="100" step="1" value="0">
-          <div class="value-display" id="detune2-val">0</div>
-        </div>
-      </div>
-      <div class="controls">
-        <div class="control-group">
-          <label>Unison Voices</label>
-          <input type="range" id="unison-count2" min="1" max="8" step="1" value="1">
-          <div class="value-display" id="unison-count2-val">1</div>
-        </div>
-        <div class="control-group">
-          <label>Unison Detune</label>
-          <input type="range" id="unison-detune2" min="0" max="100" step="1" value="20">
-          <div class="value-display" id="unison-detune2-val">20</div>
-        </div>
-        <div class="control-group">
-          <label>Stereo Spread</label>
-          <input type="range" id="unison-spread2" min="0" max="100" step="1" value="50">
-          <div class="value-display" id="unison-spread2-val">50%</div>
-        </div>
-      </div>
-      <div class="lfo-section">
-        <div class="lfo-header">
-          <span class="lfo-label">LFO</span>
-          <div class="lfo-mod-chip" id="lfo2-chip" draggable="true" data-lfo="1">MOD</div>
-        </div>
-        <div class="controls">
-          <div class="control-group">
-            <label>Waveform</label>
-            <select id="lfo-waveform2">
-              <option value="sine" selected>Sine</option>
-              <option value="triangle">Triangle</option>
-              <option value="square">Square</option>
-              <option value="sawtooth">Sawtooth</option>
-            </select>
-          </div>
-          <div class="control-group">
-            <label>Rate (Hz)</label>
-            <input type="range" id="lfo-rate2" min="0.05" max="20" step="0.05" value="1">
-            <div class="value-display" id="lfo-rate2-val">1.00</div>
-          </div>
-          <div class="control-group">
-            <label>Depth</label>
-            <input type="range" id="lfo-depth2" min="0" max="100" step="1" value="50">
-            <div class="value-display" id="lfo-depth2-val">50%</div>
-          </div>
-        </div>
-        <div class="controls">
-          <div class="control-group">
-            <label>Phase</label>
-            <input type="range" id="lfo-phase2" min="0" max="360" step="1" value="0">
-            <div class="value-display" id="lfo-phase2-val">0°</div>
-          </div>
-          <div class="control-group">
-            <label>Delay (s)</label>
-            <input type="range" id="lfo-delay2" min="0" max="5" step="0.05" value="0">
-            <div class="value-display" id="lfo-delay2-val">0.00</div>
-          </div>
-          <div class="control-group">
-            <label>Fade In (s)</label>
-            <input type="range" id="lfo-fadein2" min="0" max="5" step="0.05" value="0">
-            <div class="value-display" id="lfo-fadein2-val">0.00</div>
-          </div>
-        </div>
-        <div class="lfo-sync-row">
-          <button class="lfo-sync-toggle off" id="lfo-sync2">SYNC</button>
-          <input type="number" class="lfo-bpm-input" id="lfo-bpm2" value="120" min="20" max="300" disabled>
-          <select class="lfo-division-select" id="lfo-division2" disabled>
-            <option value="1/1">1/1</option>
-            <option value="1/2">1/2</option>
-            <option value="1/4" selected>1/4</option>
-            <option value="1/8">1/8</option>
-            <option value="1/16">1/16</option>
-          </select>
-          <button class="lfo-oneshot-toggle off" id="lfo-oneshot2">1-SHOT</button>
-        </div>
-        <div class="lfo-targets" id="lfo2-targets"></div>
-      </div>
-      <div class="filter-section" id="filter2-section" data-drop-target="filter" data-osc="2">
-        <div class="controls">
-          <div class="control-group">
-            <label>Filter</label>
-            <div class="filter-header">
-              <select id="filter-type2">
-                <option value="lowpass" selected>Low Pass</option>
-                <option value="highpass">High Pass</option>
-                <option value="bandpass">Band Pass</option>
-              </select>
-              <button class="filter-toggle on" id="filter-toggle2">ON</button>
+          <div class="controls">
+            <div class="control-group">
+              <label>Unison Voices</label>
+              <input type="range" id="unison-count1" min="1" max="8" step="1" value="1">
+              <div class="value-display" id="unison-count1-val">1</div>
+            </div>
+            <div class="control-group">
+              <label>Unison Detune</label>
+              <input type="range" id="unison-detune1" min="0" max="100" step="1" value="20">
+              <div class="value-display" id="unison-detune1-val">20</div>
+            </div>
+            <div class="control-group">
+              <label>Stereo Spread</label>
+              <input type="range" id="unison-spread1" min="0" max="100" step="1" value="50">
+              <div class="value-display" id="unison-spread1-val">50%</div>
             </div>
           </div>
+          <div class="lfo-section">
+            <div class="lfo-header">
+              <span class="lfo-label">LFO</span>
+              <div class="lfo-mod-chip" id="lfo1-chip" draggable="true" data-lfo="0">MOD</div>
+            </div>
+            <div class="controls">
+              <div class="control-group">
+                <label>Waveform</label>
+                <select id="lfo-waveform1">
+                  <option value="sine" selected>Sine</option>
+                  <option value="triangle">Triangle</option>
+                  <option value="square">Square</option>
+                  <option value="sawtooth">Sawtooth</option>
+                </select>
+              </div>
+              <div class="control-group">
+                <label>Rate (Hz)</label>
+                <input type="range" id="lfo-rate1" min="0.05" max="20" step="0.05" value="1">
+                <div class="value-display" id="lfo-rate1-val">1.00</div>
+              </div>
+              <div class="control-group">
+                <label>Depth</label>
+                <input type="range" id="lfo-depth1" min="0" max="100" step="1" value="50">
+                <div class="value-display" id="lfo-depth1-val">50%</div>
+              </div>
+            </div>
+            <div class="controls">
+              <div class="control-group">
+                <label>Phase</label>
+                <input type="range" id="lfo-phase1" min="0" max="360" step="1" value="0">
+                <div class="value-display" id="lfo-phase1-val">0°</div>
+              </div>
+              <div class="control-group">
+                <label>Delay (s)</label>
+                <input type="range" id="lfo-delay1" min="0" max="5" step="0.05" value="0">
+                <div class="value-display" id="lfo-delay1-val">0.00</div>
+              </div>
+              <div class="control-group">
+                <label>Fade In (s)</label>
+                <input type="range" id="lfo-fadein1" min="0" max="5" step="0.05" value="0">
+                <div class="value-display" id="lfo-fadein1-val">0.00</div>
+              </div>
+            </div>
+            <div class="lfo-sync-row">
+              <button class="lfo-sync-toggle off" id="lfo-sync1">SYNC</button>
+              <input type="number" class="lfo-bpm-input" id="lfo-bpm1" value="120" min="20" max="300" disabled>
+              <select class="lfo-division-select" id="lfo-division1" disabled>
+                <option value="1/1">1/1</option>
+                <option value="1/2">1/2</option>
+                <option value="1/4" selected>1/4</option>
+                <option value="1/8">1/8</option>
+                <option value="1/16">1/16</option>
+              </select>
+              <button class="lfo-oneshot-toggle off" id="lfo-oneshot1">1-SHOT</button>
+            </div>
+            <div class="lfo-targets" id="lfo1-targets"></div>
+          </div>
+          <div class="filter-section" id="filter1-section" data-drop-target="filter" data-osc="1">
+            <div class="controls">
+              <div class="control-group">
+                <label>Filter</label>
+                <div class="filter-header">
+                  <select id="filter-type1">
+                    <option value="lowpass" selected>Low Pass</option>
+                    <option value="highpass">High Pass</option>
+                    <option value="bandpass">Band Pass</option>
+                  </select>
+                  <button class="filter-toggle on" id="filter-toggle1">ON</button>
+                </div>
+              </div>
+            </div>
+            <canvas class="filter-canvas" id="filter1-canvas" width="560" height="120"></canvas>
+            <div class="filter-values" id="filter1-values"></div>
+          </div>
+          <canvas class="adsr-canvas" id="adsr1-canvas" width="560" height="120"></canvas>
+          <div class="adsr-values" id="adsr1-values"></div>
         </div>
-        <canvas class="filter-canvas" id="filter2-canvas" width="560" height="120"></canvas>
-        <div class="filter-values" id="filter2-values"></div>
       </div>
-      <canvas class="adsr-canvas" id="adsr2-canvas" width="560" height="120"></canvas>
-      <div class="adsr-values" id="adsr2-values"></div>
+
+      <div class="osc-section hidden" id="osc2-section">
+        <div class="osc-content">
+          <div class="controls">
+            <div class="control-group">
+              <label>Waveform</label>
+              <select id="waveform2">
+                <option value="sine">Sine</option>
+                <option value="triangle" selected>Triangle</option>
+                <option value="sawtooth">Sawtooth</option>
+                <option value="square">Square</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>Volume</label>
+              <input type="range" id="volume2" min="0" max="1" step="0.01" value="0.5">
+              <div class="value-display" id="volume2-val">0.50</div>
+            </div>
+            <div class="control-group">
+              <label>Detune (cents)</label>
+              <input type="range" id="detune2" min="-100" max="100" step="1" value="0">
+              <div class="value-display" id="detune2-val">0</div>
+            </div>
+          </div>
+          <div class="controls">
+            <div class="control-group">
+              <label>Unison Voices</label>
+              <input type="range" id="unison-count2" min="1" max="8" step="1" value="1">
+              <div class="value-display" id="unison-count2-val">1</div>
+            </div>
+            <div class="control-group">
+              <label>Unison Detune</label>
+              <input type="range" id="unison-detune2" min="0" max="100" step="1" value="20">
+              <div class="value-display" id="unison-detune2-val">20</div>
+            </div>
+            <div class="control-group">
+              <label>Stereo Spread</label>
+              <input type="range" id="unison-spread2" min="0" max="100" step="1" value="50">
+              <div class="value-display" id="unison-spread2-val">50%</div>
+            </div>
+          </div>
+          <div class="lfo-section">
+            <div class="lfo-header">
+              <span class="lfo-label">LFO</span>
+              <div class="lfo-mod-chip" id="lfo2-chip" draggable="true" data-lfo="1">MOD</div>
+            </div>
+            <div class="controls">
+              <div class="control-group">
+                <label>Waveform</label>
+                <select id="lfo-waveform2">
+                  <option value="sine" selected>Sine</option>
+                  <option value="triangle">Triangle</option>
+                  <option value="square">Square</option>
+                  <option value="sawtooth">Sawtooth</option>
+                </select>
+              </div>
+              <div class="control-group">
+                <label>Rate (Hz)</label>
+                <input type="range" id="lfo-rate2" min="0.05" max="20" step="0.05" value="1">
+                <div class="value-display" id="lfo-rate2-val">1.00</div>
+              </div>
+              <div class="control-group">
+                <label>Depth</label>
+                <input type="range" id="lfo-depth2" min="0" max="100" step="1" value="50">
+                <div class="value-display" id="lfo-depth2-val">50%</div>
+              </div>
+            </div>
+            <div class="controls">
+              <div class="control-group">
+                <label>Phase</label>
+                <input type="range" id="lfo-phase2" min="0" max="360" step="1" value="0">
+                <div class="value-display" id="lfo-phase2-val">0°</div>
+              </div>
+              <div class="control-group">
+                <label>Delay (s)</label>
+                <input type="range" id="lfo-delay2" min="0" max="5" step="0.05" value="0">
+                <div class="value-display" id="lfo-delay2-val">0.00</div>
+              </div>
+              <div class="control-group">
+                <label>Fade In (s)</label>
+                <input type="range" id="lfo-fadein2" min="0" max="5" step="0.05" value="0">
+                <div class="value-display" id="lfo-fadein2-val">0.00</div>
+              </div>
+            </div>
+            <div class="lfo-sync-row">
+              <button class="lfo-sync-toggle off" id="lfo-sync2">SYNC</button>
+              <input type="number" class="lfo-bpm-input" id="lfo-bpm2" value="120" min="20" max="300" disabled>
+              <select class="lfo-division-select" id="lfo-division2" disabled>
+                <option value="1/1">1/1</option>
+                <option value="1/2">1/2</option>
+                <option value="1/4" selected>1/4</option>
+                <option value="1/8">1/8</option>
+                <option value="1/16">1/16</option>
+              </select>
+              <button class="lfo-oneshot-toggle off" id="lfo-oneshot2">1-SHOT</button>
+            </div>
+            <div class="lfo-targets" id="lfo2-targets"></div>
+          </div>
+          <div class="filter-section" id="filter2-section" data-drop-target="filter" data-osc="2">
+            <div class="controls">
+              <div class="control-group">
+                <label>Filter</label>
+                <div class="filter-header">
+                  <select id="filter-type2">
+                    <option value="lowpass" selected>Low Pass</option>
+                    <option value="highpass">High Pass</option>
+                    <option value="bandpass">Band Pass</option>
+                  </select>
+                  <button class="filter-toggle on" id="filter-toggle2">ON</button>
+                </div>
+              </div>
+            </div>
+            <canvas class="filter-canvas" id="filter2-canvas" width="560" height="120"></canvas>
+            <div class="filter-values" id="filter2-values"></div>
+          </div>
+          <canvas class="adsr-canvas" id="adsr2-canvas" width="560" height="120"></canvas>
+          <div class="adsr-values" id="adsr2-values"></div>
+        </div>
+      </div>
+
+      <div class="controls master-controls" id="master-volume-section" data-drop-target="volume">
+        <div class="control-group">
+          <label>Master Volume</label>
+          <input type="range" id="master-volume" min="0" max="1" step="0.01" value="0.7">
+          <div class="value-display" id="master-volume-val">0.70</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="controls master-controls" id="master-volume-section" data-drop-target="volume">
-    <div class="control-group">
-      <label>Master Volume</label>
-      <input type="range" id="master-volume" min="0" max="1" step="0.01" value="0.7">
-      <div class="value-display" id="master-volume-val">0.70</div>
+  <!-- ═══ FX PAGE ═══ -->
+  <div class="main-page" id="page-fx">
+    <div class="synth-body">
+      <div class="fx-empty">
+        <div class="fx-empty-text">No effects loaded</div>
+      </div>
     </div>
   </div>
 
