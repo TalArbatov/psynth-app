@@ -8,6 +8,9 @@ import { createFXChain } from './modules/fx/fx-chain.js';
 import { createWaveformPreview } from './modules/waveform-preview.js';
 import { createKnob } from './modules/knob.js';
 
+// --- Knob instances registry ---
+const knobInstances = new Map();
+
 // --- Sync ---
 const sync = createSync();
 
@@ -20,8 +23,8 @@ engine.masterGain.disconnect();
 engine.masterGain.connect(fxChain.input);
 fxChain.output.connect(engine.analyser);
 
-// --- LFOs (one per oscillator) ---
-const lfos = [new LFO(), new LFO()];
+// --- LFOs (4 per oscillator) ---
+const lfos = [0, 1].map(() => Array.from({ length: 4 }, () => new LFO()));
 let baseMasterVolume = 0.7;
 
 // --- Default waveforms to match HTML select defaults ---
@@ -71,27 +74,165 @@ const waveform = createWaveformDisplay(
   engine.analyser
 );
 
-// --- Animation loop (started before filter graphs so keyboard always works) ---
+// --- Build LFO sections BEFORE upgradeAllSliders so dynamic ranges exist ---
+function buildLFOSection(oscN) {
+  const container = document.getElementById(`lfo-section-${oscN}`);
+  let tabsHTML = '<div class="lfo-tabs">';
+  let panelsHTML = '';
+  for (let l = 1; l <= 4; l++) {
+    const active = l === 1 ? ' active' : '';
+    tabsHTML += `<button class="lfo-tab${active}" data-lfo-osc="${oscN}" data-lfo-idx="${l}">LFO ${l}</button>`;
+    panelsHTML += `
+      <div class="lfo-panel${active}" id="lfo-panel-${oscN}-${l}">
+        <div class="lfo-header">
+          <span class="lfo-label">LFO ${l}</span>
+          <div class="lfo-mod-chip" id="lfo-chip-${oscN}-${l}" draggable="true" data-lfo-osc="${oscN}" data-lfo-idx="${l}">MOD</div>
+        </div>
+        <div class="controls">
+          <div class="control-group">
+            <label>Waveform</label>
+            <select id="lfo-waveform-${oscN}-${l}">
+              <option value="sine" selected>Sine</option>
+              <option value="triangle">Triangle</option>
+              <option value="square">Square</option>
+              <option value="sawtooth">Sawtooth</option>
+            </select>
+            <canvas class="waveform-preview" id="lfo-waveform-${oscN}-${l}-preview" width="120" height="30"></canvas>
+          </div>
+          <div class="control-group">
+            <label>Rate (Hz)</label>
+            <input type="range" id="lfo-rate-${oscN}-${l}" min="0.05" max="20" step="0.05" value="1">
+            <div class="value-display" id="lfo-rate-${oscN}-${l}-val">1.00</div>
+          </div>
+          <div class="control-group">
+            <label>Depth</label>
+            <input type="range" id="lfo-depth-${oscN}-${l}" min="0" max="100" step="1" value="50">
+            <div class="value-display" id="lfo-depth-${oscN}-${l}-val">50%</div>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="control-group">
+            <label>Phase</label>
+            <input type="range" id="lfo-phase-${oscN}-${l}" min="0" max="360" step="1" value="0">
+            <div class="value-display" id="lfo-phase-${oscN}-${l}-val">0\u00B0</div>
+          </div>
+          <div class="control-group">
+            <label>Delay (s)</label>
+            <input type="range" id="lfo-delay-${oscN}-${l}" min="0" max="5" step="0.05" value="0">
+            <div class="value-display" id="lfo-delay-${oscN}-${l}-val">0.00</div>
+          </div>
+          <div class="control-group">
+            <label>Fade In (s)</label>
+            <input type="range" id="lfo-fadein-${oscN}-${l}" min="0" max="5" step="0.05" value="0">
+            <div class="value-display" id="lfo-fadein-${oscN}-${l}-val">0.00</div>
+          </div>
+        </div>
+        <div class="lfo-sync-row">
+          <button class="lfo-sync-toggle off" id="lfo-sync-${oscN}-${l}">SYNC</button>
+          <input type="number" class="lfo-bpm-input" id="lfo-bpm-${oscN}-${l}" value="120" min="20" max="300" disabled>
+          <select class="lfo-division-select" id="lfo-division-${oscN}-${l}" disabled>
+            <option value="1/1">1/1</option>
+            <option value="1/2">1/2</option>
+            <option value="1/4" selected>1/4</option>
+            <option value="1/8">1/8</option>
+            <option value="1/16">1/16</option>
+          </select>
+          <button class="lfo-oneshot-toggle off" id="lfo-oneshot-${oscN}-${l}">1-SHOT</button>
+        </div>
+        <div class="lfo-targets" id="lfo-targets-${oscN}-${l}"></div>
+      </div>`;
+  }
+  tabsHTML += '</div>';
+  container.innerHTML = tabsHTML + panelsHTML;
+
+  // Tab click handlers
+  container.querySelectorAll('.lfo-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const idx = tab.dataset.lfoIdx;
+      container.querySelectorAll('.lfo-tab').forEach(t => t.classList.remove('active'));
+      container.querySelectorAll('.lfo-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(`lfo-panel-${oscN}-${idx}`).classList.add('active');
+    });
+  });
+}
+
+buildLFOSection(1);
+buildLFOSection(2);
+
+// --- Upgrade all range sliders to rotary knobs ---
+function upgradeAllSliders() {
+  const sliders = document.querySelectorAll('#synth input[type="range"]');
+  sliders.forEach(slider => {
+    const id = slider.id;
+    const minVal = parseFloat(slider.min);
+    const maxVal = parseFloat(slider.max);
+    const stepVal = parseFloat(slider.step);
+    const val = parseFloat(slider.value);
+
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 56;
+    canvas.className = 'knob-canvas';
+
+    // Create hidden input to preserve id for event listeners
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.id = id;
+
+    // Replace slider in DOM
+    const parent = slider.parentNode;
+    parent.insertBefore(canvas, slider);
+    parent.insertBefore(hidden, slider);
+    parent.removeChild(slider);
+
+    // Create knob instance
+    const knob = createKnob(canvas, hidden, {
+      min: minVal, max: maxVal, step: stepVal, value: val
+    });
+
+    knobInstances.set(id, knob);
+  });
+}
+
+upgradeAllSliders();
+
+// --- Master volume elements (needed by animation loop) ---
+const masterVolumeVal = document.getElementById('master-volume-val');
+
+// --- Animation loop ---
 const drawList = [waveform, keyboard];
 
 function animate() {
   requestAnimationFrame(animate);
 
-  // LFO modulation
+  // LFO modulation — sum all 4 LFOs per oscillator
   const now = performance.now() / 1000;
   let masterVolMod = 0;
   for (let i = 0; i < 2; i++) {
-    const lfo = lfos[i], voice = engine.voices[i];
-    const val = lfo.getValue(now);
-    if (lfo.hasTarget('filter')) {
-      voice.applyModulatedCutoff(voice.cutoff * Math.pow(2, val * 3));
+    const voice = engine.voices[i];
+    let filterMod = 0;
+    let hasFilterTarget = false;
+    for (let j = 0; j < 4; j++) {
+      const lfo = lfos[i][j];
+      const val = lfo.getValue(now);
+      if (lfo.hasTarget('filter')) {
+        hasFilterTarget = true;
+        filterMod += val;
+      }
+      if (lfo.hasTarget('volume')) masterVolMod += val;
+    }
+    if (hasFilterTarget) {
+      voice.applyModulatedCutoff(voice.cutoff * Math.pow(2, filterMod * 3));
     } else {
       voice.applyModulatedCutoff(voice.cutoff);
     }
-    if (lfo.hasTarget('volume')) masterVolMod += val;
   }
   const modVol = Math.max(0, Math.min(1, baseMasterVolume * (1 + masterVolMod)));
   engine.masterGain.gain.setValueAtTime(modVol, engine.audioCtx.currentTime);
+  knobInstances.get('master-volume')?.setValue(modVol);
+  masterVolumeVal.textContent = modVol.toFixed(2);
 
   for (const item of drawList) {
     item.draw();
@@ -128,25 +269,13 @@ import('./modules/filter-graph.js').then(({ createFilterGraph }) => {
   drawList.push(fg2);
 }).catch(e => console.error('Filter graph load failed:', e));
 
-// --- Master volume ---
-const masterVolumeSlider = document.getElementById('master-volume');
-const masterVolumeVal = document.getElementById('master-volume-val');
-masterVolumeSlider.addEventListener('input', () => {
-  const vol = parseFloat(masterVolumeSlider.value);
-  masterVolumeVal.textContent = vol.toFixed(2);
-  baseMasterVolume = vol;
-  engine.setMasterVolume(vol);
-});
-
 // --- Per-oscillator controls ---
-const detuneKnobs = [];
-
 function bindOscControls(voiceIndex, prefix) {
   const voice = engine.voices[voiceIndex];
   const section = document.getElementById(`${prefix}-section`);
   const toggle = document.getElementById(`toggle${voiceIndex + 1}`);
   const waveformSel = document.getElementById(`waveform${voiceIndex + 1}`);
-  const volumeSlider = document.getElementById(`volume${voiceIndex + 1}`);
+  const volumeInput = document.getElementById(`volume${voiceIndex + 1}`);
   const volumeVal = document.getElementById(`volume${voiceIndex + 1}-val`);
   const detuneInput = document.getElementById(`detune${voiceIndex + 1}`);
   const detuneVal = document.getElementById(`detune${voiceIndex + 1}-val`);
@@ -157,7 +286,7 @@ function bindOscControls(voiceIndex, prefix) {
   );
   wfPreview.setWaveform(waveformSel.value);
 
-  // Detune knob
+  // Detune knob (already in HTML as canvas + hidden input)
   const knob = createKnob(
     document.getElementById(`detune${voiceIndex + 1}-knob`),
     detuneInput,
@@ -169,7 +298,7 @@ function bindOscControls(voiceIndex, prefix) {
       }
     }
   );
-  detuneKnobs[voiceIndex] = knob;
+  knobInstances.set(`detune${voiceIndex + 1}`, knob);
 
   toggle.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -186,8 +315,8 @@ function bindOscControls(voiceIndex, prefix) {
     wfPreview.setWaveform(waveformSel.value);
   });
 
-  volumeSlider.addEventListener('input', () => {
-    const vol = parseFloat(volumeSlider.value);
+  volumeInput.addEventListener('input', () => {
+    const vol = parseFloat(volumeInput.value);
     volumeVal.textContent = vol.toFixed(2);
     voice.setVolume(vol);
   });
@@ -198,28 +327,28 @@ function bindOscControls(voiceIndex, prefix) {
     voice.setDetune(cents);
   });
 
-  const unisonCountSlider = document.getElementById(`unison-count${voiceIndex + 1}`);
+  const unisonCountInput = document.getElementById(`unison-count${voiceIndex + 1}`);
   const unisonCountVal = document.getElementById(`unison-count${voiceIndex + 1}-val`);
-  const unisonDetuneSlider = document.getElementById(`unison-detune${voiceIndex + 1}`);
+  const unisonDetuneInput = document.getElementById(`unison-detune${voiceIndex + 1}`);
   const unisonDetuneVal = document.getElementById(`unison-detune${voiceIndex + 1}-val`);
-  const unisonSpreadSlider = document.getElementById(`unison-spread${voiceIndex + 1}`);
+  const unisonSpreadInput = document.getElementById(`unison-spread${voiceIndex + 1}`);
   const unisonSpreadVal = document.getElementById(`unison-spread${voiceIndex + 1}-val`);
 
-  unisonCountSlider.addEventListener('input', () => {
-    const n = parseInt(unisonCountSlider.value);
+  unisonCountInput.addEventListener('input', () => {
+    const n = parseInt(unisonCountInput.value);
     unisonCountVal.textContent = n;
     voice.setUnisonCount(n);
   });
 
-  unisonDetuneSlider.addEventListener('input', () => {
-    const cents = parseFloat(unisonDetuneSlider.value);
+  unisonDetuneInput.addEventListener('input', () => {
+    const cents = parseFloat(unisonDetuneInput.value);
     unisonDetuneVal.textContent = cents;
     voice.setUnisonDetune(cents);
   });
 
-  unisonSpreadSlider.addEventListener('input', () => {
-    const spread = parseFloat(unisonSpreadSlider.value) / 100;
-    unisonSpreadVal.textContent = unisonSpreadSlider.value + '%';
+  unisonSpreadInput.addEventListener('input', () => {
+    const spread = parseFloat(unisonSpreadInput.value) / 100;
+    unisonSpreadVal.textContent = unisonSpreadInput.value + '%';
     voice.setUnisonSpread(spread);
   });
 
@@ -243,30 +372,39 @@ function bindOscControls(voiceIndex, prefix) {
 bindOscControls(0, 'osc1');
 bindOscControls(1, 'osc2');
 
-// --- LFO controls ---
-function bindLFOControls(lfoIndex) {
-  const lfo = lfos[lfoIndex];
-  const n = lfoIndex + 1;
+// --- Master volume ---
+document.getElementById('master-volume').addEventListener('input', () => {
+  const vol = parseFloat(document.getElementById('master-volume').value);
+  masterVolumeVal.textContent = vol.toFixed(2);
+  baseMasterVolume = vol;
+  engine.setMasterVolume(vol);
+});
 
-  const waveformSel = document.getElementById(`lfo-waveform${n}`);
-  const rateSlider = document.getElementById(`lfo-rate${n}`);
-  const rateVal = document.getElementById(`lfo-rate${n}-val`);
-  const depthSlider = document.getElementById(`lfo-depth${n}`);
-  const depthVal = document.getElementById(`lfo-depth${n}-val`);
-  const phaseSlider = document.getElementById(`lfo-phase${n}`);
-  const phaseVal = document.getElementById(`lfo-phase${n}-val`);
-  const delaySlider = document.getElementById(`lfo-delay${n}`);
-  const delayVal = document.getElementById(`lfo-delay${n}-val`);
-  const fadeinSlider = document.getElementById(`lfo-fadein${n}`);
-  const fadeinVal = document.getElementById(`lfo-fadein${n}-val`);
-  const syncToggle = document.getElementById(`lfo-sync${n}`);
-  const bpmInput = document.getElementById(`lfo-bpm${n}`);
-  const divisionSelect = document.getElementById(`lfo-division${n}`);
-  const oneshotToggle = document.getElementById(`lfo-oneshot${n}`);
+// --- LFO controls ---
+function bindLFOControls(oscIndex, lfoIndex) {
+  const lfo = lfos[oscIndex][lfoIndex];
+  const o = oscIndex + 1;
+  const l = lfoIndex + 1;
+
+  const waveformSel = document.getElementById(`lfo-waveform-${o}-${l}`);
+  const rateInput = document.getElementById(`lfo-rate-${o}-${l}`);
+  const rateVal = document.getElementById(`lfo-rate-${o}-${l}-val`);
+  const depthInput = document.getElementById(`lfo-depth-${o}-${l}`);
+  const depthVal = document.getElementById(`lfo-depth-${o}-${l}-val`);
+  const phaseInput = document.getElementById(`lfo-phase-${o}-${l}`);
+  const phaseVal = document.getElementById(`lfo-phase-${o}-${l}-val`);
+  const delayInput = document.getElementById(`lfo-delay-${o}-${l}`);
+  const delayVal = document.getElementById(`lfo-delay-${o}-${l}-val`);
+  const fadeinInput = document.getElementById(`lfo-fadein-${o}-${l}`);
+  const fadeinVal = document.getElementById(`lfo-fadein-${o}-${l}-val`);
+  const syncToggle = document.getElementById(`lfo-sync-${o}-${l}`);
+  const bpmInput = document.getElementById(`lfo-bpm-${o}-${l}`);
+  const divisionSelect = document.getElementById(`lfo-division-${o}-${l}`);
+  const oneshotToggle = document.getElementById(`lfo-oneshot-${o}-${l}`);
 
   // LFO waveform preview
   const lfoWfPreview = createWaveformPreview(
-    document.getElementById(`lfo-waveform${n}-preview`)
+    document.getElementById(`lfo-waveform-${o}-${l}-preview`)
   );
   lfoWfPreview.setWaveform(waveformSel.value);
 
@@ -275,29 +413,29 @@ function bindLFOControls(lfoIndex) {
     lfoWfPreview.setWaveform(waveformSel.value);
   });
 
-  rateSlider.addEventListener('input', () => {
-    lfo.rate = parseFloat(rateSlider.value);
+  rateInput.addEventListener('input', () => {
+    lfo.rate = parseFloat(rateInput.value);
     rateVal.textContent = lfo.rate.toFixed(2);
   });
 
-  depthSlider.addEventListener('input', () => {
-    const pct = parseInt(depthSlider.value);
+  depthInput.addEventListener('input', () => {
+    const pct = parseInt(depthInput.value);
     lfo.depth = pct / 100;
     depthVal.textContent = pct + '%';
   });
 
-  phaseSlider.addEventListener('input', () => {
-    lfo.phase = parseInt(phaseSlider.value);
+  phaseInput.addEventListener('input', () => {
+    lfo.phase = parseInt(phaseInput.value);
     phaseVal.textContent = lfo.phase + '\u00B0';
   });
 
-  delaySlider.addEventListener('input', () => {
-    lfo.delay = parseFloat(delaySlider.value);
+  delayInput.addEventListener('input', () => {
+    lfo.delay = parseFloat(delayInput.value);
     delayVal.textContent = lfo.delay.toFixed(2);
   });
 
-  fadeinSlider.addEventListener('input', () => {
-    lfo.fadeIn = parseFloat(fadeinSlider.value);
+  fadeinInput.addEventListener('input', () => {
+    lfo.fadeIn = parseFloat(fadeinInput.value);
     fadeinVal.textContent = lfo.fadeIn.toFixed(2);
   });
 
@@ -307,7 +445,7 @@ function bindLFOControls(lfoIndex) {
     syncToggle.classList.toggle('off', !lfo.bpmSync);
     bpmInput.disabled = !lfo.bpmSync;
     divisionSelect.disabled = !lfo.bpmSync;
-    rateSlider.disabled = lfo.bpmSync;
+    knobInstances.get(`lfo-rate-${o}-${l}`)?.setEnabled(!lfo.bpmSync);
   });
 
   bpmInput.addEventListener('input', () => {
@@ -323,15 +461,20 @@ function bindLFOControls(lfoIndex) {
     oneshotToggle.classList.toggle('on', lfo.oneShot);
     oneshotToggle.classList.toggle('off', !lfo.oneShot);
   });
-
-  // One-shot retrigger on note-on
-  engine.voices[lfoIndex].onNoteOn = () => {
-    if (lfo.oneShot) lfo.reset();
-  };
 }
 
-bindLFOControls(0);
-bindLFOControls(1);
+// Bind all 8 LFOs (2 osc x 4 lfo)
+for (let o = 0; o < 2; o++) {
+  for (let l = 0; l < 4; l++) {
+    bindLFOControls(o, l);
+  }
+  // One-shot retrigger on note-on — resets all one-shot LFOs for this osc
+  engine.voices[o].onNoteOn = () => {
+    for (let l = 0; l < 4; l++) {
+      if (lfos[o][l].oneShot) lfos[o][l].reset();
+    }
+  };
+}
 
 // --- Drag-and-drop routing ---
 function initDragDrop() {
@@ -340,15 +483,16 @@ function initDragDrop() {
   // Dragstart on MOD chips
   document.querySelectorAll('.lfo-mod-chip').forEach(chip => {
     chip.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('text/plain', chip.dataset.lfo);
+      const oscN = parseInt(chip.dataset.lfoOsc);
+      const lfoN = parseInt(chip.dataset.lfoIdx);
+      e.dataTransfer.setData('text/plain', `${oscN},${lfoN}`);
       e.dataTransfer.effectAllowed = 'link';
       // Highlight valid targets
-      const lfoIdx = parseInt(chip.dataset.lfo);
       dropTargets.forEach(target => {
         const type = target.dataset.dropTarget;
         const oscNum = target.dataset.osc;
         // LFO can target its own osc's filter or master volume
-        if (type === 'volume' || (type === 'filter' && parseInt(oscNum) === lfoIdx + 1)) {
+        if (type === 'volume' || (type === 'filter' && parseInt(oscNum) === oscN)) {
           target.classList.add('drop-target-active');
         }
       });
@@ -364,7 +508,6 @@ function initDragDrop() {
   // Drop targets
   dropTargets.forEach(target => {
     target.addEventListener('dragover', (e) => {
-      const lfoIdx = parseInt(e.dataTransfer.types.includes('text/plain') ? '0' : '-1');
       if (target.classList.contains('drop-target-active')) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'link';
@@ -379,13 +522,17 @@ function initDragDrop() {
     target.addEventListener('drop', (e) => {
       e.preventDefault();
       target.classList.remove('drop-target-hover', 'drop-target-active');
-      const lfoIdx = parseInt(e.dataTransfer.getData('text/plain'));
-      const lfo = lfos[lfoIdx];
+      const parts = e.dataTransfer.getData('text/plain').split(',');
+      const oscN = parseInt(parts[0]);
+      const lfoN = parseInt(parts[1]);
+      const oscIndex = oscN - 1;
+      const lfoIndex = lfoN - 1;
+      const lfo = lfos[oscIndex][lfoIndex];
       const type = target.dataset.dropTarget;
       const oscNum = target.dataset.osc;
 
       // Validate: LFO can only target its own osc's filter or master volume
-      if (type === 'filter' && parseInt(oscNum) !== lfoIdx + 1) return;
+      if (type === 'filter' && parseInt(oscNum) !== oscN) return;
 
       // Toggle target
       if (lfo.hasTarget(type)) {
@@ -394,7 +541,7 @@ function initDragDrop() {
         lfo.addTarget(type);
         lfo.reset();
       }
-      updateTargetBadges(lfoIdx);
+      updateTargetBadges(oscIndex, lfoIndex);
 
       // Clean up all highlights
       dropTargets.forEach(t => t.classList.remove('drop-target-active'));
@@ -402,18 +549,20 @@ function initDragDrop() {
   });
 }
 
-function updateTargetBadges(lfoIdx) {
-  const container = document.getElementById(`lfo${lfoIdx + 1}-targets`);
+function updateTargetBadges(oscIndex, lfoIndex) {
+  const o = oscIndex + 1;
+  const l = lfoIndex + 1;
+  const container = document.getElementById(`lfo-targets-${o}-${l}`);
   container.innerHTML = '';
-  const lfo = lfos[lfoIdx];
+  const lfo = lfos[oscIndex][lfoIndex];
   for (const target of lfo.targets) {
     const badge = document.createElement('span');
     badge.className = 'lfo-target-badge';
-    const label = target === 'filter' ? `Filter ${lfoIdx + 1}` : 'Master Vol';
+    const label = target === 'filter' ? `Filter ${o}` : 'Master Vol';
     badge.innerHTML = `${label} <span class="badge-remove">\u00D7</span>`;
     badge.querySelector('.badge-remove').addEventListener('click', () => {
       lfo.removeTarget(target);
-      updateTargetBadges(lfoIdx);
+      updateTargetBadges(oscIndex, lfoIndex);
     });
     container.appendChild(badge);
   }
@@ -470,10 +619,16 @@ document.addEventListener('change', (e) => {
 // Sync toggle buttons
 const syncedButtons = new Set([
   'toggle1', 'toggle2', 'filter-toggle1', 'filter-toggle2',
-  'lfo-sync1', 'lfo-sync2', 'lfo-oneshot1', 'lfo-oneshot2',
   'fx-saturation-toggle', 'fx-eq-toggle', 'fx-chorus-toggle',
   'fx-delay-toggle', 'fx-delay-pp', 'fx-reverb-toggle', 'fx-compressor-toggle'
 ]);
+// Add all LFO sync/oneshot buttons (2 osc x 4 lfo)
+for (let o = 1; o <= 2; o++) {
+  for (let l = 1; l <= 4; l++) {
+    syncedButtons.add(`lfo-sync-${o}-${l}`);
+    syncedButtons.add(`lfo-oneshot-${o}-${l}`);
+  }
+}
 
 document.addEventListener('click', (e) => {
   if (syncedButtons.has(e.target.id) && !sync.receiving) {
@@ -674,9 +829,8 @@ sync.onMessage((msg) => {
     const el = document.getElementById(msg.id);
     if (!el) return;
     el.value = msg.v;
-    // Update knob visual if this is a detune hidden input
-    if (msg.id === 'detune1') detuneKnobs[0]?.setValue(parseFloat(msg.v));
-    if (msg.id === 'detune2') detuneKnobs[1]?.setValue(parseFloat(msg.v));
+    // Update knob visual if this control has a knob instance
+    knobInstances.get(msg.id)?.setValue(parseFloat(msg.v));
     const evt = el.tagName === 'SELECT' ? 'change' : 'input';
     el.dispatchEvent(new Event(evt, { bubbles: true }));
   } else if (msg.t === 'click') {

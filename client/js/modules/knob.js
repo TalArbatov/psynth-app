@@ -1,13 +1,19 @@
 export function createKnob(canvas, hiddenInput, opts) {
   const ctx = canvas.getContext('2d');
-  const { min, max, step, onChange } = opts;
+  const { min, max, step, onChange, formatLabel } = opts;
   let value = opts.value ?? 0;
+  let enabled = true;
 
   const w = canvas.width;
   const h = canvas.height;
   const cx = w / 2;
   const cy = h / 2;
   const radius = Math.min(cx, cy) - 6;
+
+  // Proportional sizing based on radius
+  const arcWidth = Math.max(2, Math.round(radius * 0.16));
+  const dotRadius = Math.max(3, Math.round(radius * 0.2));
+  const dotStroke = Math.max(1, Math.round(radius * 0.08));
 
   // Arc sweep: 270° with gap at bottom
   const startAngle = Math.PI * 0.75;   // 135°
@@ -25,7 +31,7 @@ export function createKnob(canvas, hiddenInput, opts) {
     ctx.beginPath();
     ctx.arc(cx, cy, radius, startAngle, endAngle);
     ctx.strokeStyle = '#2a2a34';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = arcWidth;
     ctx.lineCap = 'round';
     ctx.stroke();
 
@@ -35,8 +41,8 @@ export function createKnob(canvas, hiddenInput, opts) {
     if (frac > 0.001) {
       ctx.beginPath();
       ctx.arc(cx, cy, radius, startAngle, valAngle);
-      ctx.strokeStyle = '#00d2ff';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = enabled ? '#00d2ff' : '#444';
+      ctx.lineWidth = arcWidth;
       ctx.lineCap = 'round';
       ctx.stroke();
     }
@@ -45,19 +51,27 @@ export function createKnob(canvas, hiddenInput, opts) {
     const dotX = cx + Math.cos(valAngle) * radius;
     const dotY = cy + Math.sin(valAngle) * radius;
     ctx.beginPath();
-    ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#00d2ff';
+    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+    ctx.fillStyle = enabled ? '#00d2ff' : '#444';
     ctx.fill();
     ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = dotStroke;
     ctx.stroke();
 
-    // Center label
-    ctx.fillStyle = '#5a5a65';
-    ctx.font = '9px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(Math.round(value), cx, cy);
+    // Center label (only if formatLabel provided)
+    if (formatLabel) {
+      ctx.fillStyle = '#5a5a65';
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(formatLabel(value), cx, cy);
+    }
+
+    // Dimmed overlay when disabled
+    if (!enabled) {
+      ctx.fillStyle = 'rgba(17,17,20,0.45)';
+      ctx.fillRect(0, 0, w, h);
+    }
   }
 
   function setValue(v) {
@@ -73,20 +87,19 @@ export function createKnob(canvas, hiddenInput, opts) {
     if (onChange) onChange(value);
   }
 
+  function setEnabled(flag) {
+    enabled = flag;
+    canvas.style.cursor = flag ? 'grab' : 'not-allowed';
+    draw();
+  }
+
   // --- Mouse interaction ---
   let dragging = false;
   let dragStartY = 0;
   let dragStartValue = 0;
 
-  function canvasPos(clientX, clientY) {
-    const r = canvas.getBoundingClientRect();
-    return {
-      x: (clientX - r.left) * (w / r.width),
-      y: (clientY - r.top) * (h / r.height)
-    };
-  }
-
   canvas.addEventListener('mousedown', e => {
+    if (!enabled) return;
     dragging = true;
     dragStartY = e.clientY;
     dragStartValue = value;
@@ -106,12 +119,13 @@ export function createKnob(canvas, hiddenInput, opts) {
   window.addEventListener('mouseup', () => {
     if (dragging) {
       dragging = false;
-      canvas.style.cursor = 'grab';
+      canvas.style.cursor = enabled ? 'grab' : 'not-allowed';
     }
   });
 
   // --- Touch interaction ---
   canvas.addEventListener('touchstart', e => {
+    if (!enabled) return;
     const t = e.touches[0];
     dragging = true;
     dragStartY = t.clientY;
@@ -138,5 +152,5 @@ export function createKnob(canvas, hiddenInput, opts) {
   hiddenInput.value = value;
   draw();
 
-  return { draw, setValue };
+  return { draw, setValue, setEnabled };
 }

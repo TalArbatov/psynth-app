@@ -215,8 +215,7 @@ body {
   margin-bottom: 5px;
 }
 
-.control-group select,
-.control-group input[type="range"] {
+.control-group select {
   width: 100%;
 }
 
@@ -236,27 +235,6 @@ select {
 
 select:focus {
   border-color: #00d2ff;
-}
-
-/* ── Range sliders ── */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  border-radius: 2px;
-  background: #2a2a34;
-  outline: none;
-  margin-top: 6px;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #00d2ff;
-  cursor: pointer;
-  box-shadow: 0 0 6px rgba(0, 210, 255, 0.3);
 }
 
 .value-display {
@@ -378,6 +356,46 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 6px;
   padding: 10px 12px;
   border: 1px solid #2a2a30;
+}
+
+/* ── LFO Tabs ── */
+.lfo-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.lfo-tab {
+  flex: 1;
+  padding: 5px 0;
+  background: #141417;
+  color: #555;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.lfo-tab:hover {
+  color: #999;
+  background: #1e1e24;
+}
+
+.lfo-tab.active {
+  background: #2a2a34;
+  color: #00d2ff;
+}
+
+.lfo-panel {
+  display: none;
+}
+
+.lfo-panel.active {
+  display: block;
 }
 
 .lfo-header {
@@ -607,7 +625,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* ── Rotary knob ── */
 .knob-canvas {
   display: block;
-  margin: 0 auto;
+  margin: 4px auto 0;
   cursor: grab;
 }
 
