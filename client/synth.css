@@ -283,6 +283,152 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: bold;
 }
 
+/* LFO Section */
+.lfo-section {
+  background: #0a1628;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.lfo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.lfo-label {
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #888;
+}
+
+.lfo-mod-chip {
+  background: #e94560;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.1s;
+}
+
+.lfo-mod-chip:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+.lfo-sync-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.lfo-sync-toggle,
+.lfo-oneshot-toggle {
+  background: #555;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.6rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.lfo-sync-toggle.on,
+.lfo-oneshot-toggle.on {
+  background: #2ecc71;
+}
+
+.lfo-bpm-input {
+  width: 50px;
+  background: #0f3460;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.lfo-bpm-input:disabled,
+.lfo-division-select:disabled {
+  opacity: 0.4;
+}
+
+.lfo-division-select {
+  background: #0f3460;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+}
+
+/* Drop target highlights */
+.drop-target-active {
+  outline: 2px dashed #555;
+  outline-offset: 2px;
+}
+
+.drop-target-hover {
+  outline: 2px dashed #e94560;
+  outline-offset: 2px;
+  background: rgba(233, 69, 96, 0.05);
+}
+
+/* LFO target badges */
+.lfo-targets {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.lfo-targets:empty {
+  display: none;
+}
+
+.lfo-target-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #e94560;
+  color: #e94560;
+  font-size: 0.6rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 12px;
+  cursor: default;
+}
+
+.lfo-target-badge .badge-remove {
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.1s;
+}
+
+.lfo-target-badge .badge-remove:hover {
+  opacity: 1;
+}
+
+.lfo-target-badge:hover {
+  background: rgba(233, 69, 96, 0.15);
+}
+
 .hint {
   text-align: center;
   font-size: 0.7rem;

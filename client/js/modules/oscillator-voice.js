@@ -24,6 +24,9 @@ export class OscillatorVoice {
     this.unisonCount = 1;
     this.unisonDetune = 20;
     this.unisonSpread = 0.5;
+
+    // Callback for LFO one-shot retrigger
+    this.onNoteOn = null;
   }
 
   setEnabled(enabled) {
@@ -266,6 +269,16 @@ export class OscillatorVoice {
     g.linearRampToValueAtTime(scaledVolume * this.adsr.s, now + this.adsr.a + this.adsr.d);
 
     this.activeNotes.set(freq, { oscillators, panners, filter, gainNode });
+
+    if (this.onNoteOn) this.onNoteOn(freq);
+  }
+
+  applyModulatedCutoff(freq) {
+    this.filter.frequency.value = freq;
+    const now = this.audioCtx.currentTime;
+    for (const note of this.activeNotes.values()) {
+      note.filter.frequency.setValueAtTime(freq, now);
+    }
   }
 
   noteOff(freq) {
