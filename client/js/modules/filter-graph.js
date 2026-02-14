@@ -6,7 +6,7 @@ const DB_MIN = -30;
 const DB_MAX = 20;
 const NUM_POINTS = 200;
 
-export function createFilterGraph(canvas, valuesEl, voice) {
+export function createFilterGraph(canvas, valuesEl, voice, onChange) {
   const ctx = canvas.getContext('2d');
   const pad = { top: 14, bottom: 20, left: 30, right: 8 };
   const plotW = canvas.width - pad.left - pad.right;
@@ -184,6 +184,7 @@ export function createFilterGraph(canvas, valuesEl, voice) {
     voice.setFilterResonance(clampedQ);
 
     draw();
+    if (onChange) onChange();
   }
 
   canvas.addEventListener('mousedown', e => {

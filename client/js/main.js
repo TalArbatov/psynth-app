@@ -3,6 +3,10 @@ import { createADSRGraph } from './modules/adsr-graph.js';
 import { createPianoKeyboard } from './modules/piano-keyboard.js';
 import { createWaveformDisplay } from './modules/waveform-display.js';
 import { LFO } from './modules/lfo.js';
+import { createSync } from './modules/sync.js';
+
+// --- Sync ---
+const sync = createSync();
 
 // --- Audio engine (2 oscillator voices) ---
 const engine = new AudioEngine(2);
@@ -15,24 +19,40 @@ let baseMasterVolume = 0.7;
 engine.voices[0].setWaveform('sawtooth');
 engine.voices[1].setWaveform('triangle');
 
-// --- ADSR graphs ---
-createADSRGraph(
-  document.getElementById('adsr1-canvas'),
-  document.getElementById('adsr1-values'),
-  engine.voices[0].adsr
-);
-createADSRGraph(
-  document.getElementById('adsr2-canvas'),
-  document.getElementById('adsr2-values'),
-  engine.voices[1].adsr
-);
+// --- ADSR graphs (with sync onChange) ---
+const adsrGraphs = [
+  createADSRGraph(
+    document.getElementById('adsr1-canvas'),
+    document.getElementById('adsr1-values'),
+    engine.voices[0].adsr,
+    () => {
+      const a = engine.voices[0].adsr;
+      sync.send({ t: 'adsr', n: 0, a: a.a, d: a.d, s: a.s, r: a.r });
+    }
+  ),
+  createADSRGraph(
+    document.getElementById('adsr2-canvas'),
+    document.getElementById('adsr2-values'),
+    engine.voices[1].adsr,
+    () => {
+      const a = engine.voices[1].adsr;
+      sync.send({ t: 'adsr', n: 1, a: a.a, d: a.d, s: a.s, r: a.r });
+    }
+  )
+];
 
 // --- Piano keyboard ---
 const keyboard = createPianoKeyboard(
   document.getElementById('keyboard'),
   {
-    onNoteOn: freq => engine.noteOn(freq),
-    onNoteOff: freq => engine.noteOff(freq),
+    onNoteOn: freq => {
+      engine.noteOn(freq);
+      sync.send({ t: 'noteOn', f: freq });
+    },
+    onNoteOff: freq => {
+      engine.noteOff(freq);
+      sync.send({ t: 'noteOff', f: freq });
+    },
   }
 );
 
@@ -70,19 +90,31 @@ function animate() {
 }
 animate();
 
-// --- Filter graphs (dynamic import so it can't block the rest of the page) ---
+// --- Filter graphs (with sync onChange) ---
 import('./modules/filter-graph.js').then(({ createFilterGraph }) => {
   const fg1 = createFilterGraph(
     document.getElementById('filter1-canvas'),
     document.getElementById('filter1-values'),
-    engine.voices[0]
+    engine.voices[0],
+    () => {
+      sync.send({
+        t: 'filter', n: 0,
+        cutoff: engine.voices[0].cutoff, q: engine.voices[0].resonance
+      });
+    }
   );
   drawList.push(fg1);
 
   const fg2 = createFilterGraph(
     document.getElementById('filter2-canvas'),
     document.getElementById('filter2-values'),
-    engine.voices[1]
+    engine.voices[1],
+    () => {
+      sync.send({
+        t: 'filter', n: 1,
+        cutoff: engine.voices[1].cutoff, q: engine.voices[1].resonance
+      });
+    }
   );
   drawList.push(fg2);
 }).catch(e => console.error('Filter graph load failed:', e));
@@ -376,4 +408,64 @@ oscTabs.forEach(tab => {
     oscSections.forEach(s => s.classList.add('hidden'));
     document.getElementById(`osc${oscNum}-section`).classList.remove('hidden');
   });
+});
+
+// ══════════════════════════════════════════════
+// WebSocket sync — broadcast all parameter changes
+// ══════════════════════════════════════════════
+
+// Sync standard inputs (ranges, number inputs) via event delegation
+document.addEventListener('input', (e) => {
+  if (e.target.id && e.target.tagName !== 'SELECT' && !sync.receiving) {
+    sync.send({ t: 'ctrl', id: e.target.id, v: e.target.value });
+  }
+}, true);
+
+// Sync selects via event delegation
+document.addEventListener('change', (e) => {
+  if (e.target.id && e.target.tagName === 'SELECT' && !sync.receiving) {
+    sync.send({ t: 'ctrl', id: e.target.id, v: e.target.value });
+  }
+}, true);
+
+// Sync toggle buttons
+const syncedButtons = new Set([
+  'toggle1', 'toggle2', 'filter-toggle1', 'filter-toggle2',
+  'lfo-sync1', 'lfo-sync2', 'lfo-oneshot1', 'lfo-oneshot2'
+]);
+
+document.addEventListener('click', (e) => {
+  if (syncedButtons.has(e.target.id) && !sync.receiving) {
+    sync.send({ t: 'click', id: e.target.id });
+  }
+}, true);
+
+// Receive handler
+sync.onMessage((msg) => {
+  if (msg.t === 'ctrl') {
+    const el = document.getElementById(msg.id);
+    if (!el) return;
+    el.value = msg.v;
+    const evt = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.dispatchEvent(new Event(evt, { bubbles: true }));
+  } else if (msg.t === 'click') {
+    const el = document.getElementById(msg.id);
+    if (el) el.click();
+  } else if (msg.t === 'adsr') {
+    const adsr = engine.voices[msg.n].adsr;
+    adsr.a = msg.a;
+    adsr.d = msg.d;
+    adsr.s = msg.s;
+    adsr.r = msg.r;
+    adsrGraphs[msg.n].draw();
+  } else if (msg.t === 'filter') {
+    engine.voices[msg.n].setFilterCutoff(msg.cutoff);
+    engine.voices[msg.n].setFilterResonance(msg.q);
+  } else if (msg.t === 'noteOn') {
+    engine.noteOn(msg.f);
+    keyboard.remoteNoteOn(msg.f);
+  } else if (msg.t === 'noteOff') {
+    engine.noteOff(msg.f);
+    keyboard.remoteNoteOff(msg.f);
+  }
 });

@@ -1,6 +1,6 @@
 import { ADSR_MAX } from './constants.js';
 
-export function createADSRGraph(canvas, valuesEl, adsr) {
+export function createADSRGraph(canvas, valuesEl, adsr, onChange) {
   const ctx = canvas.getContext('2d');
 
   const pad = { top: 14, bottom: 20, left: 8, right: 8 };
@@ -165,6 +165,7 @@ export function createADSRGraph(canvas, valuesEl, adsr) {
       adsr.r = Math.max(0.01, ((x - minX) / zones.r.width) * ADSR_MAX.r);
     }
     draw();
+    if (onChange) onChange();
   }
 
   canvas.addEventListener('mousedown', e => {

@@ -224,5 +224,9 @@ export function createPianoKeyboard(canvas, { onNoteOn, onNoteOff }) {
   });
 
   draw();
-  return { draw };
+  return {
+    draw,
+    remoteNoteOn(freq) { activeFreqs.add(freq); },
+    remoteNoteOff(freq) { activeFreqs.delete(freq); }
+  };
 }
