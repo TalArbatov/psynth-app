@@ -1,4 +1,4 @@
-type Page = 'osc' | 'fx';
+type Page = 'osc' | 'fx' | 'seq';
 
 export function MainTabs({
   activePage,
@@ -22,6 +22,13 @@ export function MainTabs({
         onClick={() => onChange('fx')}
       >
         FX
+      </div>
+      <div
+        className={`main-tab${activePage === 'seq' ? ' active' : ''}`}
+        data-page="seq"
+        onClick={() => onChange('seq')}
+      >
+        Seq
       </div>
     </div>
   );

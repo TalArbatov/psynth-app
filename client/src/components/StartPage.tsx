@@ -1,34 +1,31 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { CreateSessionTab } from './start/CreateSessionTab';
+import { JoinSessionTab } from './start/JoinSessionTab';
+
+type Tab = 'create' | 'join';
 
 export function StartPage() {
-    const [sessionName, setSessionName] = useState('');
-    const [username, setUsername] = useState('');
-    const navigate = useNavigate();
-
-    const [step, setStep] = useState<'session' | 'username'>('session');
-
-    function onSubmit() {
-        navigate('/synth');
-    }
+    const [tab, setTab] = useState<Tab>('create');
 
     return (
         <div className="start-page">
+            <h1 className="start-title">Tal's Polyphonic Dual Oscillator Synth</h1>
             <div className="start-window">
-                <h2 className="start-window-title">Dual Osc Synth</h2>
-                <div className="start-input-row">
-                    <input
-                        type="text"
-                        className="start-input"
-                        placeholder="Enter Session Name"
-                        value={sessionName}
-                        onChange={e => setSessionName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') onSubmit(); }}
-                    />
-                    <button className="start-button" onClick={onSubmit}>
-                        Enter
+                <div className="start-tabs">
+                    <button
+                        className={`start-tab${tab === 'create' ? ' active' : ''}`}
+                        onClick={() => setTab('create')}
+                    >
+                        Create Session
+                    </button>
+                    <button
+                        className={`start-tab${tab === 'join' ? ' active' : ''}`}
+                        onClick={() => setTab('join')}
+                    >
+                        Join Session
                     </button>
                 </div>
+                {tab === 'create' ? <CreateSessionTab /> : <JoinSessionTab />}
             </div>
         </div>
     );

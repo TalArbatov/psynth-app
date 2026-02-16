@@ -2,13 +2,14 @@ import { AudioEngine } from '../../modules/audio-engine.js';
 import { createFXChain } from '../../modules/fx/fx-chain.js';
 import { LFO } from '../../modules/lfo.js';
 import { createSync } from '../../modules/sync.js';
+import { API_BASE_URL } from '../../config/api.js';
 
 /**
  * Runtime services and mutable app state.
  * Keeps audio/sync construction separate from UI wiring.
  */
 export function createSynthRuntime() {
-  const sync = createSync();
+  const sync = createSync(API_BASE_URL);
   const engine = new AudioEngine(2);
   const fxChain = createFXChain(engine.audioCtx);
 

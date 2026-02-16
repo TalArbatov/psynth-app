@@ -44,4 +44,10 @@ export class AudioEngine {
       voice.noteOff(freq);
     }
   }
+
+  /** Pre-schedule a note on the Web Audio timeline. Returns a cancel function. */
+  scheduleNote(freq: number, startTime: number, duration: number): () => void {
+    const cancellers = this.voices.map(v => v.scheduleNote(freq, startTime, duration));
+    return () => { for (const c of cancellers) c(); };
+  }
 }

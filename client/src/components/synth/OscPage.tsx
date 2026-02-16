@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { SynthRuntime } from '../../application/synth/runtime.js';
 import type { LFODivision, LFOTarget, LFOWaveform } from '../../modules/lfo.js';
@@ -92,6 +92,114 @@ function createInitialLfoSet(): [LfoUIState[], LfoUIState[]] {
     Array.from({ length: 4 }, () => createInitialLfo()),
     Array.from({ length: 4 }, () => createInitialLfo()),
   ];
+}
+
+const LFO_COLORS = ['#00d2ff', '#ff6b9d', '#ffd93d', '#6bff6b'];
+
+function getTargetElementId(target: LFOTarget, osc: 1 | 2): string | null {
+  switch (target) {
+    case 'filter': return `filter${osc}-section`;
+    case 'volume': return 'master-volume-section';
+    case 'osc-volume': return `volume${osc}-knob`;
+    case 'osc-detune': return `detune${osc}-knob`;
+    case 'osc-unison-detune': return `unison-detune${osc}-knob`;
+    case 'osc-unison-spread': return `unison-spread${osc}-knob`;
+    default: return null;
+  }
+}
+
+function LfoCableOverlay({
+  lfoState,
+  activeOsc,
+  activeLfoTab,
+  showCables,
+}: {
+  lfoState: [LfoUIState[], LfoUIState[]];
+  activeOsc: 1 | 2;
+  activeLfoTab: [1 | 2 | 3 | 4, 1 | 2 | 3 | 4];
+  showCables: boolean;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [paths, setPaths] = useState<Array<{ d: string; color: string }>>([]);
+  const [resizeCount, setResizeCount] = useState(0);
+
+  useEffect(() => {
+    const container = svgRef.current?.parentElement;
+    if (!container) return;
+    const observer = new ResizeObserver(() => setResizeCount((c) => c + 1));
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!showCables) {
+      setPaths([]);
+      return;
+    }
+
+    const container = svgRef.current?.parentElement;
+    if (!container) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const nextPaths: Array<{ d: string; color: string }> = [];
+    const oscIndex = activeOsc - 1;
+    const activeTab = activeLfoTab[oscIndex];
+
+    for (let lfoN = 1; lfoN <= 4; lfoN++) {
+      const lfo = lfoState[oscIndex][lfoN - 1];
+      if (lfo.targets.length === 0) continue;
+
+      const color = LFO_COLORS[lfoN - 1];
+
+      // Source: active tab → MOD chip, inactive tab → LFO tab button
+      let sourceEl: Element | null;
+      if (lfoN === activeTab) {
+        sourceEl = document.getElementById(`lfo-chip-${activeOsc}-${lfoN}`);
+      } else {
+        sourceEl = document.querySelector(
+          `#lfo-section-${activeOsc} .lfo-tab[data-lfo-idx="${lfoN}"]`
+        );
+      }
+      if (!sourceEl) continue;
+
+      const sourceRect = sourceEl.getBoundingClientRect();
+      const sx = sourceRect.left + sourceRect.width / 2 - containerRect.left;
+      const sy = sourceRect.bottom - containerRect.top;
+
+      for (const target of lfo.targets) {
+        const targetId = getTargetElementId(target, activeOsc);
+        if (!targetId) continue;
+
+        const targetEl = document.getElementById(targetId);
+        if (!targetEl) continue;
+
+        const targetRect = targetEl.getBoundingClientRect();
+        const tx = targetRect.left + targetRect.width / 2 - containerRect.left;
+        const ty = targetRect.top - containerRect.top;
+
+        const sag = Math.abs(tx - sx) * 0.15 + 30;
+        const cx = (sx + tx) / 2;
+        const cy = Math.max(sy, ty) + sag;
+
+        nextPaths.push({
+          d: `M ${sx},${sy} Q ${cx},${cy} ${tx},${ty}`,
+          color,
+        });
+      }
+    }
+
+    setPaths(nextPaths);
+  }, [lfoState, activeOsc, activeLfoTab, showCables, resizeCount]);
+
+  if (!showCables) return null;
+
+  return (
+    <svg ref={svgRef} className="lfo-cable-overlay">
+      {paths.map((p, i) => (
+        <path key={i} d={p.d} stroke={p.color} className="lfo-cable" />
+      ))}
+    </svg>
+  );
 }
 
 function OscSection({
@@ -287,6 +395,7 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
   const [lfoState, setLfoState] = useState<[LfoUIState[], LfoUIState[]]>(createInitialLfoSet);
   const [dragSource, setDragSource] = useState<DragSource | null>(null);
   const [hoverTarget, setHoverTarget] = useState<string | null>(null);
+  const [showCables, setShowCables] = useState(false);
 
   const wfPreview1Ref = useRef<ReturnType<typeof createWaveformPreview> | null>(null);
   const wfPreview2Ref = useRef<ReturnType<typeof createWaveformPreview> | null>(null);
@@ -501,23 +610,31 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
             <div key={`lfo-panel-${osc}-${lfoN}`} className={`lfo-panel${activeTab === lfoN ? ' active' : ''}`} id={`lfo-panel-${osc}-${lfoN}`}>
               <div className="lfo-header">
                 <span className="lfo-label">LFO {lfoN}</span>
-                <div
-                  className="lfo-mod-chip"
-                  id={`lfo-chip-${osc}-${lfoN}`}
-                  draggable={true}
-                  data-lfo-osc={osc}
-                  data-lfo-idx={lfoN}
-                  onDragStart={(e) => {
-                    e.dataTransfer.effectAllowed = 'link';
-                    e.dataTransfer.setData('text/plain', `${osc},${lfoN}`);
-                    setDragSource({ osc, lfo: lfoN as 1 | 2 | 3 | 4 });
-                  }}
-                  onDragEnd={() => {
-                    setDragSource(null);
-                    setHoverTarget(null);
-                  }}
-                >
-                  MOD
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    className={`lfo-vis-toggle ${showCables ? 'on' : 'off'}`}
+                    onClick={() => setShowCables((prev) => !prev)}
+                  >
+                    VIS
+                  </button>
+                  <div
+                    className="lfo-mod-chip"
+                    id={`lfo-chip-${osc}-${lfoN}`}
+                    draggable={true}
+                    data-lfo-osc={osc}
+                    data-lfo-idx={lfoN}
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = 'link';
+                      e.dataTransfer.setData('text/plain', `${osc},${lfoN}`);
+                      setDragSource({ osc, lfo: lfoN as 1 | 2 | 3 | 4 });
+                    }}
+                    onDragEnd={() => {
+                      setDragSource(null);
+                      setHoverTarget(null);
+                    }}
+                  >
+                    MOD
+                  </div>
                 </div>
               </div>
 
@@ -866,6 +983,13 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
             />
           </div>
         </div>
+
+        <LfoCableOverlay
+          lfoState={lfoState}
+          activeOsc={activeOsc}
+          activeLfoTab={activeLfoTab}
+          showCables={showCables}
+        />
       </div>
     </div>
   );

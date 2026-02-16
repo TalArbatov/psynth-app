@@ -6,9 +6,20 @@ export interface SyncClient {
   readonly receiving: boolean;
 }
 
-export function createSync(): SyncClient {
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(`${protocol}//${location.host}`);
+/**
+ * @param baseUrl  Optional HTTP(S) base URL of the backend (e.g. from API_BASE_URL).
+ *                 Converted to ws(s):// automatically. Falls back to location.host.
+ */
+export function createSync(baseUrl?: string): SyncClient {
+  let wsUrl: string;
+  if (baseUrl) {
+    // http://host:port → ws://host:port, https://… → wss://…
+    wsUrl = baseUrl.replace(/^http/, 'ws');
+  } else {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    wsUrl = `${protocol}//${location.host}`;
+  }
+  const ws = new WebSocket(wsUrl);
 
   let _receiving = false;
   const _handlers: Array<(msg: SyncMessage) => void> = [];

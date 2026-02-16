@@ -1,25 +1,14 @@
-import express from 'express';
-import path from 'path';
 import { createServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { createApp } from './app';
+import { createWebSocketServer } from './websocket/ws-server';
+import { config } from './config';
+import { logger } from './utils/logger';
 
-const app = express();
-app.use(express.static(path.join(__dirname, '..', '..', 'client')));
-
+const app = createApp();
 const server = createServer(app);
-const wss = new WebSocketServer({ server });
 
-wss.on('connection', (ws) => {
-    ws.on('message', (data) => {
-        const msg = data.toString();
-        for (const client of wss.clients) {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(msg);
-            }
-        }
-    });
-});
+createWebSocketServer(server);
 
-server.listen(4000, () => {
-    console.log('Server is running on port 4000');
+server.listen(config.port, () => {
+    logger.info(`Server listening on port ${config.port}`);
 });

@@ -106,4 +106,10 @@ export type SyncMessage =
   | { t: 'adsr'; n: number; a: number; d: number; s: number; r: number }
   | { t: 'filter'; n: number; cutoff: number; q: number }
   | { t: 'noteOn'; f: number }
-  | { t: 'noteOff'; f: number };
+  | { t: 'noteOff'; f: number }
+  | { t: 'seqStep'; i: number; enabled: boolean; note: string; velocity: number; gate: number }
+  | { t: 'seqPlay' }
+  | { t: 'seqStop' }
+  | { t: 'seqBpm'; v: number }
+  | { t: 'seqSwing'; v: number }
+  | { t: 'seqStepCount'; v: number };

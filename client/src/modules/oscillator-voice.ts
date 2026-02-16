@@ -368,6 +368,126 @@ export class OscillatorVoice {
     }
   }
 
+  /**
+   * Pre-schedules an entire note on the Web Audio timeline.
+   * Unlike noteOn/noteOff (which act at currentTime), this runs on the
+   * audio thread and is immune to main-thread jank from React renders.
+   * Returns a cancel function to silence the note immediately (used by stop).
+   */
+  scheduleNote(freq: number, startTime: number, duration: number): () => void {
+    if (!this.enabled) return () => {};
+
+    const ctx = this.audioCtx;
+    const N = this.unisonCount;
+    const a = this.adsr.a;
+    const d = this.adsr.d;
+    const s = this.adsr.s;
+    const r = this.adsr.r;
+
+    const noteFilter = ctx.createBiquadFilter();
+    noteFilter.type = this.filterType;
+    noteFilter.frequency.setValueAtTime(this.cutoff, startTime);
+    noteFilter.Q.setValueAtTime(this.resonance, startTime);
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 0;
+
+    const scaledVolume = this.volume / Math.sqrt(N);
+    const oscillators: OscillatorNode[] = [];
+    const panners: StereoPannerNode[] = [];
+
+    for (let i = 0; i < N; i++) {
+      const unisonOffset = N > 1 ? this.unisonDetune * (2 * i / (N - 1) - 1) : 0;
+      const pan = N > 1 ? this.unisonSpread * (2 * i / (N - 1) - 1) : 0;
+
+      const osc = ctx.createOscillator();
+      osc.type = this.waveform;
+      osc.frequency.setValueAtTime(freq, startTime);
+      osc.detune.setValueAtTime(this.detune + unisonOffset, startTime);
+
+      const panner = ctx.createStereoPanner();
+      panner.pan.setValueAtTime(pan, startTime);
+
+      osc.connect(panner);
+      if (this.filterEnabled) {
+        panner.connect(noteFilter);
+      } else {
+        panner.connect(gainNode);
+      }
+
+      osc.start(startTime);
+      oscillators.push(osc);
+      panners.push(panner);
+    }
+
+    if (this.filterEnabled) {
+      noteFilter.connect(gainNode);
+    }
+    gainNode.connect(this.destination);
+
+    // Schedule full ADSR on the Web Audio timeline.
+    // Handle cases where the gate is shorter than attack or attack+decay.
+    const g = gainNode.gain;
+    const offTime = startTime + duration;
+    const attackEnd = startTime + a;
+    const decayEnd = startTime + a + d;
+    const endTime = offTime + r;
+
+    g.setValueAtTime(0, startTime);
+
+    if (offTime > decayEnd) {
+      // Full attack → decay → sustain hold → release
+      g.linearRampToValueAtTime(scaledVolume, attackEnd);
+      g.linearRampToValueAtTime(scaledVolume * s, decayEnd);
+      g.setValueAtTime(scaledVolume * s, offTime);
+    } else if (offTime > attackEnd) {
+      // Full attack, decay cut short → accelerated ramp to sustain
+      g.linearRampToValueAtTime(scaledVolume, attackEnd);
+      g.linearRampToValueAtTime(scaledVolume * s, offTime);
+    } else {
+      // Attack cut short
+      const level = a > 0 ? scaledVolume * ((offTime - startTime) / a) : scaledVolume;
+      g.linearRampToValueAtTime(level, offTime);
+    }
+
+    g.linearRampToValueAtTime(0, endTime);
+
+    // Stop oscillators after the release tail
+    const stopTime = endTime + 0.01;
+    for (const osc of oscillators) {
+      osc.stop(stopTime);
+    }
+
+    // Non-critical cleanup of disconnected nodes
+    const cleanupId = setTimeout(() => {
+      try {
+        for (const osc of oscillators) osc.disconnect();
+        for (const p of panners) p.disconnect();
+        noteFilter.disconnect();
+        gainNode.disconnect();
+      } catch (_) { /* already disconnected */ }
+    }, Math.max(0, (stopTime - ctx.currentTime) * 1000 + 200));
+
+    // Return cancel function for immediate silence (used by stop())
+    return () => {
+      const now = ctx.currentTime;
+      g.cancelScheduledValues(now);
+      g.setValueAtTime(0, now);
+      for (const osc of oscillators) {
+        try { osc.stop(now + 0.005); } catch (_) { /* already stopped */ }
+      }
+      clearTimeout(cleanupId);
+      setTimeout(() => {
+        try {
+          for (const osc of oscillators) osc.disconnect();
+          for (const p of panners) p.disconnect();
+          noteFilter.disconnect();
+          gainNode.disconnect();
+        } catch (_) { /* already disconnected */ }
+      }, 50);
+    };
+  }
+
   noteOff(freq: number): void {
     const note = this.activeNotes.get(freq);
     if (!note) return;
