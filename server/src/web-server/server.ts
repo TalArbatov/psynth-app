@@ -23,8 +23,6 @@ const registerRequestHandlers = (app: FastifyInstance) => {
     app.post(routes.session.create, requestHandlers.createSessionHandler);
 
     app.get(routes.session.find, requestHandlers.findSessionHandler);
-
-    app.post(routes.preset.create, requestHandlers.createPresetHandler);
 };
 
 const registerAppProfile = (app: FastifyInstance, appProfile: AppProfile): void => {
@@ -72,7 +70,7 @@ const registerPlugins = async (app: FastifyInstance): Promise<void> => {
     // SPA fallback: serve index.html for non-API, non-WS routes
     app.setNotFoundHandler(async (request, reply) => {
         // Only serve SPA fallback for GET requests that look like page navigation
-        if (request.method === 'GET' && !request.url.startsWith('/session') && !request.url.startsWith('/presets') && !request.url.startsWith('/heartbeat') && !request.url.startsWith('/ws')) {
+        if (request.method === 'GET' && !request.url.startsWith('/session') && !request.url.startsWith('/heartbeat') && !request.url.startsWith('/ws')) {
             return reply.sendFile('index.html');
         }
 

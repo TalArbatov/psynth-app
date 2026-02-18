@@ -1,6 +1,0 @@
-CREATE TABLE IF NOT EXISTS presets (
-    id VARCHAR(8) PRIMARY KEY,
-    account_id VARCHAR(255) NOT NULL,
-    preset_data JSONB NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);

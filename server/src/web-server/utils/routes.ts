@@ -4,9 +4,6 @@ const routes = {
         create: '/session',
         find: '/session',
     },
-    preset: {
-        create: '/presets',
-    },
 };
 
 export { routes };

@@ -17,12 +17,6 @@ export type SessionEntityType = Entity & {
     created_at: string;
 };
 
-export type PresetEntityType = Entity & {
-    account_id: string;
-    preset_data: Record<string, unknown>;
-    created_at: string;
-};
-
 export type ErrorResponse = {
     error: {
         code: string;
