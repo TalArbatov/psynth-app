@@ -189,24 +189,31 @@ export function PatchProvider({
       voice.setUnisonCount(osc.unisonCount);
       voice.setUnisonDetune(osc.unisonDetune);
       voice.setUnisonSpread(osc.unisonSpread / 100);
-      voice.setFilterEnabled(osc.filterEnabled);
-      voice.setFilterType(osc.filterType);
     });
 
-    // LFOs - flat [4] mapped to runtime.lfos[4]
+    // Global filter
+    runtime.engine.setFilterEnabled(p.global.filterEnabled);
+    runtime.engine.setFilterType(p.global.filterType);
+    runtime.engine.setFilterCutoff(p.global.filterCutoff);
+    runtime.engine.setFilterResonance(p.global.filterResonance);
+
+    // LFOs - patch has 4 flat global LFOs, runtime has [2][4] per-osc
+    // Apply each patch LFO to both oscillator slots
     p.lfos.forEach((lfo, i) => {
-      const runtimeLfo = runtime.lfos[i];
-      if (!runtimeLfo) return;
-      runtimeLfo.waveform = lfo.waveform;
-      runtimeLfo.rate = lfo.rate;
-      runtimeLfo.depth = lfo.depth;
-      runtimeLfo.phase = lfo.phase;
-      runtimeLfo.delay = lfo.delay;
-      runtimeLfo.fadeIn = lfo.fadeIn;
-      runtimeLfo.bpmSync = lfo.bpmSync;
-      runtimeLfo.bpm = lfo.bpm;
-      runtimeLfo.syncDivision = lfo.syncDivision;
-      runtimeLfo.oneShot = lfo.oneShot;
+      for (let osc = 0; osc < runtime.lfos.length; osc++) {
+        const runtimeLfo = runtime.lfos[osc]?.[i];
+        if (!runtimeLfo) continue;
+        runtimeLfo.waveform = lfo.waveform;
+        runtimeLfo.rate = lfo.rate;
+        runtimeLfo.depth = lfo.depth;
+        runtimeLfo.phase = lfo.phase;
+        runtimeLfo.delay = lfo.delay;
+        runtimeLfo.fadeIn = lfo.fadeIn;
+        runtimeLfo.bpmSync = lfo.bpmSync;
+        runtimeLfo.bpm = lfo.bpm;
+        runtimeLfo.syncDivision = lfo.syncDivision;
+        runtimeLfo.oneShot = lfo.oneShot;
+      }
     });
 
     // Master volume

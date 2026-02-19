@@ -13,8 +13,6 @@ type OscUIState = {
   unisonCount: number;
   unisonDetune: number;
   unisonSpread: number;
-  filterEnabled: boolean;
-  filterType: BiquadFilterType;
 };
 
 type LfoUIState = {
@@ -55,8 +53,6 @@ const INITIAL_OSC: [OscUIState, OscUIState] = [
     unisonCount: 1,
     unisonDetune: 20,
     unisonSpread: 50,
-    filterEnabled: true,
-    filterType: 'lowpass',
   },
   {
     enabled: true,
@@ -66,8 +62,6 @@ const INITIAL_OSC: [OscUIState, OscUIState] = [
     unisonCount: 1,
     unisonDetune: 20,
     unisonSpread: 50,
-    filterEnabled: true,
-    filterType: 'lowpass',
   },
 ];
 
@@ -98,7 +92,7 @@ const LFO_COLORS = ['#00d2ff', '#ff6b9d', '#ffd93d', '#6bff6b'];
 
 function getTargetElementId(target: LFOTarget, osc: 1 | 2): string | null {
   switch (target) {
-    case 'filter': return `filter${osc}-section`;
+    case 'filter': return 'filter-section';
     case 'volume': return 'master-volume-section';
     case 'osc-volume': return `volume${osc}-knob`;
     case 'osc-detune': return `detune${osc}-knob`;
@@ -214,8 +208,6 @@ function OscSection({
   onUnisonCount,
   onUnisonDetune,
   onUnisonSpread,
-  onFilterType,
-  onFilterToggle,
 }: {
   n: 1 | 2;
   state: OscUIState;
@@ -234,14 +226,11 @@ function OscSection({
   onUnisonCount: (value: number) => void;
   onUnisonDetune: (value: number) => void;
   onUnisonSpread: (value: number) => void;
-  onFilterType: (value: BiquadFilterType) => void;
-  onFilterToggle: () => void;
 }) {
   const oscVolumeDrop = dropForTarget('osc-volume');
   const oscDetuneDrop = dropForTarget('osc-detune');
   const oscUnisonDetuneDrop = dropForTarget('osc-unison-detune');
   const oscUnisonSpreadDrop = dropForTarget('osc-unison-spread');
-  const filterDrop = dropForTarget('filter');
 
   return (
     <div className={`osc-section${hidden ? ' hidden' : ''}${state.enabled ? '' : ' disabled'}`} id={`osc${n}-section`}>
@@ -344,38 +333,6 @@ function OscSection({
 
         {lfoSection}
 
-        <div
-          className={`filter-section${state.filterEnabled ? '' : ' disabled'}${filterDrop.active ? ' drop-target-active' : ''}${filterDrop.hover ? ' drop-target-hover' : ''}`}
-          id={`filter${n}-section`}
-          data-drop-target="filter"
-          data-osc={`${n}`}
-          onDragOver={filterDrop.onDragOver}
-          onDragLeave={filterDrop.onDragLeave}
-          onDrop={filterDrop.onDrop}
-        >
-          <div className="controls">
-            <div className="control-group">
-              <label>Filter</label>
-              <div className="filter-header">
-                <select
-                  id={`filter-type${n}`}
-                  value={state.filterType}
-                  onChange={(e) => onFilterType(e.target.value as BiquadFilterType)}
-                >
-                  <option value="lowpass">Low Pass</option>
-                  <option value="highpass">High Pass</option>
-                  <option value="bandpass">Band Pass</option>
-                </select>
-                <button className={`filter-toggle ${state.filterEnabled ? 'on' : 'off'}`} id={`filter-toggle${n}`} onClick={onFilterToggle}>
-                  {state.filterEnabled ? 'ON' : 'OFF'}
-                </button>
-              </div>
-            </div>
-          </div>
-          <canvas className="filter-canvas" id={`filter${n}-canvas`} width="560" height="120"></canvas>
-          <div className="filter-values" id={`filter${n}-values`}></div>
-        </div>
-
         <canvas className="adsr-canvas" id={`adsr${n}-canvas`} width="560" height="120"></canvas>
         <div className="adsr-values" id={`adsr${n}-values`}></div>
       </div>
@@ -387,12 +344,20 @@ function OscSection({
  * React-managed oscillator UI.
  * Keeps DOM IDs stable for canvas-based modules and sync integration.
  */
-export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; active: boolean }) {
+export function OscPage({ runtime, active, masterVolume, setMasterVolume, activePresetData, resetCount }: {
+  runtime: SynthRuntime | null;
+  active: boolean;
+  masterVolume: number;
+  setMasterVolume: (v: number) => void;
+  activePresetData: Record<string, any> | null;
+  resetCount: number;
+}) {
   const [activeOsc, setActiveOsc] = useState<1 | 2>(1);
   const [oscState, setOscState] = useState<[OscUIState, OscUIState]>(INITIAL_OSC);
-  const [masterVolume, setMasterVolume] = useState(0.7);
   const [activeLfoTab, setActiveLfoTab] = useState<[1 | 2 | 3 | 4, 1 | 2 | 3 | 4]>([1, 1]);
   const [lfoState, setLfoState] = useState<[LfoUIState[], LfoUIState[]]>(createInitialLfoSet);
+  const [filterEnabled, setFilterEnabled] = useState(true);
+  const [filterType, setFilterType] = useState<BiquadFilterType>('lowpass');
   const [dragSource, setDragSource] = useState<DragSource | null>(null);
   const [hoverTarget, setHoverTarget] = useState<string | null>(null);
   const [showCables, setShowCables] = useState(false);
@@ -495,9 +460,10 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
       voice.setUnisonCount(s.unisonCount);
       voice.setUnisonDetune(s.unisonDetune);
       voice.setUnisonSpread(s.unisonSpread / 100);
-      voice.setFilterEnabled(s.filterEnabled);
-      voice.setFilterType(s.filterType);
     });
+
+    runtime.engine.setFilterEnabled(filterEnabled);
+    runtime.engine.setFilterType(filterType);
 
     lfoState.forEach((oscLfos, oscIdx) => {
       oscLfos.forEach((lfo, lfoIdx) => {
@@ -541,16 +507,105 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
     };
   }, [runtime]);
 
+  // Apply loaded preset data to osc/lfo/filter state + runtime
+  useEffect(() => {
+    if (!activePresetData) return;
+    const d = activePresetData;
+
+    // Voices
+    const voices = d.voices as Array<any> | undefined;
+    if (voices && voices.length >= 2) {
+      setOscState([
+        {
+          enabled: voices[0].enabled, waveform: voices[0].waveform, volume: voices[0].volume,
+          detune: voices[0].detune, unisonCount: voices[0].unisonCount,
+          unisonDetune: voices[0].unisonDetune, unisonSpread: voices[0].unisonSpread,
+        },
+        {
+          enabled: voices[1].enabled, waveform: voices[1].waveform, volume: voices[1].volume,
+          detune: voices[1].detune, unisonCount: voices[1].unisonCount,
+          unisonDetune: voices[1].unisonDetune, unisonSpread: voices[1].unisonSpread,
+        },
+      ]);
+      if (runtime) {
+        voices.forEach((v: any, i: number) => {
+          const voice = runtime.engine.voices[i];
+          if (!voice) return;
+          voice.setEnabled(v.enabled);
+          voice.setWaveform(v.waveform);
+          voice.setVolume(v.volume);
+          voice.setDetune(v.detune);
+          voice.setUnisonCount(v.unisonCount);
+          voice.setUnisonDetune(v.unisonDetune);
+          voice.setUnisonSpread(v.unisonSpread / 100);
+          if (v.adsr) Object.assign(voice.adsr, v.adsr);
+        });
+      }
+    }
+
+    // Filter
+    const filter = d.filter as any;
+    if (filter) {
+      setFilterEnabled(filter.enabled);
+      setFilterType(filter.type);
+      if (runtime) {
+        runtime.engine.setFilterEnabled(filter.enabled);
+        runtime.engine.setFilterType(filter.type);
+        runtime.engine.setFilterCutoff(filter.cutoff);
+        runtime.engine.setFilterResonance(filter.resonance);
+      }
+    }
+
+    // LFOs — d.lfos is [2][4] array
+    const lfos = d.lfos as any[][] | undefined;
+    if (lfos && lfos.length >= 2) {
+      setLfoState([
+        lfos[0].map((lfo: any) => ({
+          waveform: lfo.waveform, rate: lfo.rate, depthPct: lfo.depth * 100,
+          phase: lfo.phase, delay: lfo.delay, fadeIn: lfo.fadeIn,
+          bpmSync: lfo.bpmSync, bpm: lfo.bpm, syncDivision: lfo.syncDivision,
+          oneShot: lfo.oneShot, targets: [...lfo.targets],
+        })),
+        lfos[1].map((lfo: any) => ({
+          waveform: lfo.waveform, rate: lfo.rate, depthPct: lfo.depth * 100,
+          phase: lfo.phase, delay: lfo.delay, fadeIn: lfo.fadeIn,
+          bpmSync: lfo.bpmSync, bpm: lfo.bpm, syncDivision: lfo.syncDivision,
+          oneShot: lfo.oneShot, targets: [...lfo.targets],
+        })),
+      ] as [LfoUIState[], LfoUIState[]]);
+      if (runtime) {
+        lfos.forEach((oscLfos, oscIdx) => {
+          oscLfos.forEach((lfo: any, lfoIdx: number) => {
+            const rLfo = runtime.lfos[oscIdx]?.[lfoIdx];
+            if (!rLfo) return;
+            rLfo.waveform = lfo.waveform;
+            rLfo.rate = lfo.rate;
+            rLfo.depth = lfo.depth;
+            rLfo.phase = lfo.phase;
+            rLfo.delay = lfo.delay;
+            rLfo.fadeIn = lfo.fadeIn;
+            rLfo.bpmSync = lfo.bpmSync;
+            rLfo.bpm = lfo.bpm;
+            rLfo.syncDivision = lfo.syncDivision;
+            rLfo.oneShot = lfo.oneShot;
+            rLfo.targets.clear();
+            lfo.targets.forEach((t: any) => rLfo.addTarget(t));
+          });
+        });
+      }
+    }
+  }, [activePresetData, resetCount]);
+
   const applyVoice = (index: 0 | 1, updater: (voice: SynthRuntime['engine']['voices'][0]) => void) => {
     if (!runtime) return;
     updater(runtime.engine.voices[index]);
   };
 
-  const targetKey = (target: LFOTarget, osc: 1 | 2) => (target === 'volume' ? 'volume' : `${target}-${osc}`);
+  const targetKey = (target: LFOTarget, osc: 1 | 2) => (target === 'volume' || target === 'filter' ? target : `${target}-${osc}`);
 
   const isTargetValidForDrag = (target: LFOTarget, osc: 1 | 2) => {
     if (!dragSource) return false;
-    if (target === 'volume') return true;
+    if (target === 'volume' || target === 'filter') return true;
     return dragSource.osc === osc;
   };
 
@@ -810,7 +865,7 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
                 </button>
                 {panel.targets.map((target) => {
                   const labelMap: Record<LFOTarget, string> = {
-                    filter: `Filter ${osc}`,
+                    filter: 'Filter',
                     volume: 'Master Vol',
                     'osc-volume': `Osc ${osc} Vol`,
                     'osc-detune': `Osc ${osc} Detune`,
@@ -835,6 +890,7 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
     );
   };
 
+  const filterDrop = dropBinding('filter', 1);
   const masterVolumeDrop = dropBinding('volume', 1);
 
   return (
@@ -905,15 +961,6 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
             setVoicePatch(0, { unisonSpread: value });
             applyVoice(0, (v) => v.setUnisonSpread(value / 100));
           }}
-          onFilterType={(value) => {
-            setVoicePatch(0, { filterType: value });
-            applyVoice(0, (v) => v.setFilterType(value));
-          }}
-          onFilterToggle={() => {
-            const enabled = !oscState[0].filterEnabled;
-            setVoicePatch(0, { filterEnabled: enabled });
-            applyVoice(0, (v) => v.setFilterEnabled(enabled));
-          }}
         />
 
         <OscSection
@@ -946,16 +993,50 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
             setVoicePatch(1, { unisonSpread: value });
             applyVoice(1, (v) => v.setUnisonSpread(value / 100));
           }}
-          onFilterType={(value) => {
-            setVoicePatch(1, { filterType: value });
-            applyVoice(1, (v) => v.setFilterType(value));
-          }}
-          onFilterToggle={() => {
-            const enabled = !oscState[1].filterEnabled;
-            setVoicePatch(1, { filterEnabled: enabled });
-            applyVoice(1, (v) => v.setFilterEnabled(enabled));
-          }}
         />
+
+        <div
+          className={`filter-section${filterEnabled ? '' : ' disabled'}${filterDrop.active ? ' drop-target-active' : ''}${filterDrop.hover ? ' drop-target-hover' : ''}`}
+          id="filter-section"
+          data-drop-target="filter"
+          onDragOver={filterDrop.onDragOver}
+          onDragLeave={filterDrop.onDragLeave}
+          onDrop={filterDrop.onDrop}
+        >
+          <div className="controls">
+            <div className="control-group">
+              <label>Filter</label>
+              <div className="filter-header">
+                <select
+                  id="filter-type"
+                  value={filterType}
+                  onChange={(e) => {
+                    const type = e.target.value as BiquadFilterType;
+                    setFilterType(type);
+                    if (runtime) runtime.engine.setFilterType(type);
+                  }}
+                >
+                  <option value="lowpass">Low Pass</option>
+                  <option value="highpass">High Pass</option>
+                  <option value="bandpass">Band Pass</option>
+                </select>
+                <button
+                  className={`filter-toggle ${filterEnabled ? 'on' : 'off'}`}
+                  id="filter-toggle"
+                  onClick={() => {
+                    const enabled = !filterEnabled;
+                    setFilterEnabled(enabled);
+                    if (runtime) runtime.engine.setFilterEnabled(enabled);
+                  }}
+                >
+                  {filterEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+            </div>
+          </div>
+          <canvas className="filter-canvas" id="filter-canvas" width="560" height="120"></canvas>
+          <div className="filter-values" id="filter-values"></div>
+        </div>
 
         <div
           className={`controls master-controls${masterVolumeDrop.active ? ' drop-target-active' : ''}${masterVolumeDrop.hover ? ' drop-target-hover' : ''}`}
@@ -964,25 +1045,7 @@ export function OscPage({ runtime, active }: { runtime: SynthRuntime | null; act
           onDragOver={masterVolumeDrop.onDragOver}
           onDragLeave={masterVolumeDrop.onDragLeave}
           onDrop={masterVolumeDrop.onDrop}
-        >
-          <div className="control-group">
-            <label>Master Volume</label>
-            <KnobControl
-              id="master-volume"
-              min={0}
-              max={1}
-              step={0.01}
-              value={masterVolume}
-              displayValue={masterVolume.toFixed(2)}
-              onValueChange={(value) => {
-                setMasterVolume(value);
-                if (!runtime) return;
-                runtime.state.baseMasterVolume = value;
-                runtime.engine.setMasterVolume(value);
-              }}
-            />
-          </div>
-        </div>
+        />
 
         <LfoCableOverlay
           lfoState={lfoState}

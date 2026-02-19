@@ -14,7 +14,12 @@
       "Bash(echo:*)",
       "Bash(./node_modules/typescript/bin/tsc:*)",
       "Bash(find:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(node -e:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)"
     ]
   }
 }

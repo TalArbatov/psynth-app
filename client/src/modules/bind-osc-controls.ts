@@ -92,19 +92,4 @@ export function bindOscControls(voiceIndex: number, prefix: string, engine: Audi
     voice.setUnisonSpread(spread);
   });
 
-  const filterTypeSel = document.getElementById(`filter-type${voiceIndex + 1}`) as HTMLSelectElement;
-  filterTypeSel.addEventListener('change', () => {
-    voice.setFilterType(filterTypeSel.value as BiquadFilterType);
-  });
-
-  const filterToggle = document.getElementById(`filter-toggle${voiceIndex + 1}`)!;
-  const filterSection = document.getElementById(`filter${voiceIndex + 1}-section`)!;
-  filterToggle.addEventListener('click', () => {
-    const enabled = !voice.filterEnabled;
-    voice.setFilterEnabled(enabled);
-    filterToggle.textContent = enabled ? 'ON' : 'OFF';
-    filterToggle.classList.toggle('on', enabled);
-    filterToggle.classList.toggle('off', !enabled);
-    filterSection.classList.toggle('disabled', !enabled);
-  });
 }

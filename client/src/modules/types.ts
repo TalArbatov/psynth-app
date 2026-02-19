@@ -32,6 +32,7 @@ export interface KnobOptions {
 export interface KnobInstance extends Drawable {
   setValue(value: number): void;
   setEnabled(flag: boolean): void;
+  setModRings(rings: Array<{ amount: number; color: string }>): void;
 }
 
 export interface PianoKeyboardView extends Drawable {
@@ -104,7 +105,7 @@ export type SyncMessage =
   | { t: 'ctrl'; id: string; v: string }
   | { t: 'click'; id: string }
   | { t: 'adsr'; n: number; a: number; d: number; s: number; r: number }
-  | { t: 'filter'; n: number; cutoff: number; q: number }
+  | { t: 'filter'; cutoff: number; q: number }
   | { t: 'noteOn'; f: number }
   | { t: 'noteOff'; f: number }
   | { t: 'seqStep'; i: number; enabled: boolean; note: string; velocity: number; gate: number }

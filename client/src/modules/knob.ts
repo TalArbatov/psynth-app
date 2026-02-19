@@ -11,6 +11,7 @@ export function createKnob(
   const { min, max, step, onChange, formatLabel } = opts;
   let value = opts.value ?? 0;
   let enabled = true;
+  let modRings: Array<{ amount: number; color: string }> = [];
 
   const w = canvas.width;
   const h = canvas.height;
@@ -75,6 +76,22 @@ export function createKnob(
       ctx.fillText(formatLabel(value), cx, cy);
     }
 
+    // Mod rings
+    for (let i = 0; i < modRings.length; i++) {
+      const ring = modRings[i];
+      const r = radius + (i + 1) * (arcWidth + 1);
+      const ringFrac = Math.abs(ring.amount);
+      if (ringFrac < 0.001) continue;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, startAngle, startAngle + ringFrac * sweep);
+      ctx.strokeStyle = ring.color;
+      ctx.lineWidth = Math.max(1, arcWidth - 1);
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.7;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
     // Dimmed overlay when disabled
     if (!enabled) {
       ctx.fillStyle = 'rgba(17,17,20,0.45)';
@@ -84,7 +101,6 @@ export function createKnob(
 
   function setValue(v: number): void {
     value = Math.max(min, Math.min(max, v));
-    // Snap to step
     value = Math.round(value / step) * step;
     draw();
   }
@@ -98,6 +114,11 @@ export function createKnob(
   function setEnabled(flag: boolean): void {
     enabled = flag;
     canvas.style.cursor = flag ? 'grab' : 'not-allowed';
+    draw();
+  }
+
+  function setModRings(rings: Array<{ amount: number; color: string }>): void {
+    modRings = rings;
     draw();
   }
 
@@ -162,5 +183,5 @@ export function createKnob(
   hiddenInput.value = String(value);
   draw();
 
-  return { draw, setValue, setEnabled };
+  return { draw, setValue, setEnabled, setModRings };
 }

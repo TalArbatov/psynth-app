@@ -1,5 +1,12 @@
-import type { OscillatorVoice } from './oscillator-voice.js';
 import type { Drawable } from './types.js';
+
+export interface FilterSource {
+  cutoff: number;
+  resonance: number;
+  filter: BiquadFilterNode;
+  setFilterCutoff(freq: number): void;
+  setFilterResonance(q: number): void;
+}
 
 const MIN_FREQ = 20;
 const MAX_FREQ = 20000;
@@ -17,7 +24,7 @@ interface Point {
 export function createFilterGraph(
   canvas: HTMLCanvasElement,
   valuesEl: HTMLElement,
-  voice: OscillatorVoice,
+  source: FilterSource,
   onChange?: () => void
 ): Drawable {
   const tempCtx = canvas.getContext('2d');
@@ -56,11 +63,11 @@ export function createFilterGraph(
   }
 
   function getHandlePos(): Point {
-    const x = freqToX(voice.cutoff);
-    const singleFreq = new Float32Array([voice.cutoff]);
+    const x = freqToX(source.cutoff);
+    const singleFreq = new Float32Array([source.cutoff]);
     const singleMag = new Float32Array(1);
     const singlePhase = new Float32Array(1);
-    voice.filter.getFrequencyResponse(singleFreq, singleMag, singlePhase);
+    source.filter.getFrequencyResponse(singleFreq, singleMag, singlePhase);
     const db = 20 * Math.log10(singleMag[0] || 0.001);
     const y = dbToY(Math.max(DB_MIN, Math.min(DB_MAX, db)));
     return { x, y };
@@ -108,7 +115,7 @@ export function createFilterGraph(
     }
     ctx.setLineDash([]);
 
-    voice.filter.getFrequencyResponse(freqArray, magArray, phaseArray);
+    source.filter.getFrequencyResponse(freqArray, magArray, phaseArray);
 
     ctx.beginPath();
     for (let i = 0; i < NUM_POINTS; i++) {
@@ -152,11 +159,11 @@ export function createFilterGraph(
   }
 
   function updateValues(): void {
-    const freq = voice.cutoff;
+    const freq = source.cutoff;
     const freqStr = freq >= 1000 ? `${(freq / 1000).toFixed(1)} kHz` : `${freq.toFixed(0)} Hz`;
     valuesEl.innerHTML =
       `<span class="filter-label">Cutoff</span> <span>${freqStr}</span>` +
-      `<span class="filter-label">Q</span> <span>${voice.resonance.toFixed(2)}</span>`;
+      `<span class="filter-label">Q</span> <span>${source.resonance.toFixed(2)}</span>`;
   }
 
   let dragging = false;
@@ -178,10 +185,10 @@ export function createFilterGraph(
 
   function applyDrag(pos: Point): void {
     const freq = xToFreq(pos.x);
-    voice.setFilterCutoff(Math.max(MIN_FREQ, Math.min(MAX_FREQ, freq)));
+    source.setFilterCutoff(Math.max(MIN_FREQ, Math.min(MAX_FREQ, freq)));
 
     const q = yToQ(pos.y);
-    voice.setFilterResonance(Math.max(MIN_Q, Math.min(MAX_Q, q)));
+    source.setFilterResonance(Math.max(MIN_Q, Math.min(MAX_Q, q)));
 
     draw();
     if (onChange) onChange();
@@ -236,4 +243,3 @@ export function createFilterGraph(
   draw();
   return { draw };
 }
-

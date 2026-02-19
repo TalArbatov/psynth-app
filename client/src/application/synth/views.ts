@@ -32,11 +32,12 @@ export function createSynthViews(runtime: SynthRuntime) {
       engine.noteOff(freq);
       sync.send({ t: 'noteOff', f: freq });
     },
+    isEnabled: () => runtime.state.keyboardEnabled,
   });
 
   const waveform = createWaveformDisplay(byCanvasId('waveform-canvas'), engine.analyser);
   const eqGraph = createEQGraph(byCanvasId('fx-eq-canvas'), fxChain.eq);
-  const drawList = [waveform, keyboard, eqGraph];
+  const drawList = [waveform, keyboard, eqGraph, ...adsrGraphs];
 
   return { adsrGraphs, keyboard, drawList };
 }

@@ -1,12 +1,10 @@
 import type { ADSR } from './types.js';
 
 type VoiceWaveform = OscillatorType;
-type VoiceFilterType = BiquadFilterType;
 
 interface ActiveNote {
   oscillators: OscillatorNode[];
   panners: StereoPannerNode[];
-  filter: BiquadFilterNode;
   gainNode: GainNode;
   envRatio?: number;
 }
@@ -14,17 +12,12 @@ interface ActiveNote {
 export class OscillatorVoice {
   audioCtx: AudioContext;
   destination: AudioNode;
-  filter: BiquadFilterNode;
   activeNotes: Map<number, ActiveNote>;
   enabled: boolean;
   volume: number;
   waveform: VoiceWaveform;
   detune: number;
   adsr: ADSR;
-  filterType: VoiceFilterType;
-  filterEnabled: boolean;
-  cutoff: number;
-  resonance: number;
   unisonCount: number;
   unisonDetune: number;
   unisonSpread: number;
@@ -34,22 +27,12 @@ export class OscillatorVoice {
     this.audioCtx = audioCtx;
     this.destination = destination;
 
-    // Reference filter for visualization (not connected to audio graph)
-    this.filter = audioCtx.createBiquadFilter();
-    this.filter.type = 'lowpass';
-    this.filter.frequency.value = 2000;
-    this.filter.Q.value = 1;
-
-    this.activeNotes = new Map(); // freq -> { oscillators, panners, filter, gainNode }
+    this.activeNotes = new Map();
     this.enabled = true;
     this.volume = 0.5;
     this.waveform = 'sawtooth';
     this.detune = 0;
     this.adsr = { a: 0.05, d: 0.12, s: 0.7, r: 0.3 };
-    this.filterType = 'lowpass';
-    this.filterEnabled = true;
-    this.cutoff = 2000;
-    this.resonance = 1;
 
     // Unison
     this.unisonCount = 1;
@@ -101,7 +84,6 @@ export class OscillatorVoice {
       const g = note.gainNode.gain;
       g.cancelScheduledValues(now);
       const current = g.value;
-      // Update stored envelope ratio from current gain if we can derive it
       if (oldScaled > 0) {
         note.envRatio = current / oldScaled;
       }
@@ -109,59 +91,8 @@ export class OscillatorVoice {
     }
   }
 
-  setFilterEnabled(enabled: boolean): void {
-    this.filterEnabled = enabled;
-    for (const note of this.activeNotes.values()) {
-      // Disconnect all oscillators/panners and filter
-      for (let i = 0; i < note.oscillators.length; i++) {
-        note.oscillators[i].disconnect();
-        note.panners[i].disconnect();
-      }
-      note.filter.disconnect();
-      // Reconnect
-      for (let i = 0; i < note.oscillators.length; i++) {
-        note.oscillators[i].connect(note.panners[i]);
-        if (enabled) {
-          note.panners[i].connect(note.filter);
-        } else {
-          note.panners[i].connect(note.gainNode);
-        }
-      }
-      if (enabled) {
-        note.filter.connect(note.gainNode);
-      }
-    }
-  }
-
-  setFilterType(type: VoiceFilterType): void {
-    this.filterType = type;
-    this.filter.type = type;
-    for (const note of this.activeNotes.values()) {
-      note.filter.type = type;
-    }
-  }
-
-  setFilterCutoff(freq: number): void {
-    this.cutoff = freq;
-    this.filter.frequency.value = freq;
-    const now = this.audioCtx.currentTime;
-    for (const note of this.activeNotes.values()) {
-      note.filter.frequency.setValueAtTime(freq, now);
-    }
-  }
-
-  setFilterResonance(q: number): void {
-    this.resonance = q;
-    this.filter.Q.value = q;
-    const now = this.audioCtx.currentTime;
-    for (const note of this.activeNotes.values()) {
-      note.filter.Q.setValueAtTime(q, now);
-    }
-  }
-
   setUnisonCount(n: number): void {
     this.unisonCount = n;
-    // Rebuild all active notes with the new voice count
     for (const freq of [...this.activeNotes.keys()]) {
       this._rebuildNote(freq);
     }
@@ -206,13 +137,6 @@ export class OscillatorVoice {
     for (const panner of old.panners) {
       panner.disconnect();
     }
-    old.filter.disconnect();
-
-    // Reuse existing filter and gainNode to preserve gain envelope
-    const filter = old.filter;
-    filter.type = this.filterType;
-    filter.frequency.setValueAtTime(this.cutoff, now);
-    filter.Q.setValueAtTime(this.resonance, now);
 
     const gainNode = old.gainNode;
     const scaledVolume = this.volume / Math.sqrt(N);
@@ -238,22 +162,14 @@ export class OscillatorVoice {
       panner.pan.setValueAtTime(pan, now);
 
       osc.connect(panner);
-      if (this.filterEnabled) {
-        panner.connect(filter);
-      } else {
-        panner.connect(gainNode);
-      }
+      panner.connect(gainNode);
 
       osc.start(now);
       oscillators.push(osc);
       panners.push(panner);
     }
 
-    if (this.filterEnabled) {
-      filter.connect(gainNode);
-    }
-
-    this.activeNotes.set(freq, { oscillators, panners, filter, gainNode });
+    this.activeNotes.set(freq, { oscillators, panners, gainNode });
   }
 
   noteOn(freq: number): void {
@@ -266,11 +182,6 @@ export class OscillatorVoice {
 
     const now = this.audioCtx.currentTime;
     const N = this.unisonCount;
-
-    const filter = this.audioCtx.createBiquadFilter();
-    filter.type = this.filterType;
-    filter.frequency.setValueAtTime(this.cutoff, now);
-    filter.Q.setValueAtTime(this.resonance, now);
 
     const gainNode = this.audioCtx.createGain();
     gainNode.gain.value = 0;
@@ -292,20 +203,13 @@ export class OscillatorVoice {
       panner.pan.setValueAtTime(pan, now);
 
       osc.connect(panner);
-      if (this.filterEnabled) {
-        panner.connect(filter);
-      } else {
-        panner.connect(gainNode);
-      }
+      panner.connect(gainNode);
 
       osc.start(now);
       oscillators.push(osc);
       panners.push(panner);
     }
 
-    if (this.filterEnabled) {
-      filter.connect(gainNode);
-    }
     gainNode.connect(this.destination);
 
     // ADSR attack + decay
@@ -314,17 +218,9 @@ export class OscillatorVoice {
     g.linearRampToValueAtTime(scaledVolume, now + this.adsr.a);
     g.linearRampToValueAtTime(scaledVolume * this.adsr.s, now + this.adsr.a + this.adsr.d);
 
-    this.activeNotes.set(freq, { oscillators, panners, filter, gainNode });
+    this.activeNotes.set(freq, { oscillators, panners, gainNode });
 
     if (this.onNoteOn) this.onNoteOn(freq);
-  }
-
-  applyModulatedCutoff(freq: number): void {
-    this.filter.frequency.value = freq;
-    const now = this.audioCtx.currentTime;
-    for (const note of this.activeNotes.values()) {
-      note.filter.frequency.setValueAtTime(freq, now);
-    }
   }
 
   applyModulatedVolume(volume: number): void {
@@ -370,8 +266,6 @@ export class OscillatorVoice {
 
   /**
    * Pre-schedules an entire note on the Web Audio timeline.
-   * Unlike noteOn/noteOff (which act at currentTime), this runs on the
-   * audio thread and is immune to main-thread jank from React renders.
    * Returns a cancel function to silence the note immediately (used by stop).
    */
   scheduleNote(freq: number, startTime: number, duration: number): () => void {
@@ -383,11 +277,6 @@ export class OscillatorVoice {
     const d = this.adsr.d;
     const s = this.adsr.s;
     const r = this.adsr.r;
-
-    const noteFilter = ctx.createBiquadFilter();
-    noteFilter.type = this.filterType;
-    noteFilter.frequency.setValueAtTime(this.cutoff, startTime);
-    noteFilter.Q.setValueAtTime(this.resonance, startTime);
 
     const gainNode = ctx.createGain();
     gainNode.gain.value = 0;
@@ -409,24 +298,16 @@ export class OscillatorVoice {
       panner.pan.setValueAtTime(pan, startTime);
 
       osc.connect(panner);
-      if (this.filterEnabled) {
-        panner.connect(noteFilter);
-      } else {
-        panner.connect(gainNode);
-      }
+      panner.connect(gainNode);
 
       osc.start(startTime);
       oscillators.push(osc);
       panners.push(panner);
     }
 
-    if (this.filterEnabled) {
-      noteFilter.connect(gainNode);
-    }
     gainNode.connect(this.destination);
 
     // Schedule full ADSR on the Web Audio timeline.
-    // Handle cases where the gate is shorter than attack or attack+decay.
     const g = gainNode.gain;
     const offTime = startTime + duration;
     const attackEnd = startTime + a;
@@ -436,39 +317,32 @@ export class OscillatorVoice {
     g.setValueAtTime(0, startTime);
 
     if (offTime > decayEnd) {
-      // Full attack → decay → sustain hold → release
       g.linearRampToValueAtTime(scaledVolume, attackEnd);
       g.linearRampToValueAtTime(scaledVolume * s, decayEnd);
       g.setValueAtTime(scaledVolume * s, offTime);
     } else if (offTime > attackEnd) {
-      // Full attack, decay cut short → accelerated ramp to sustain
       g.linearRampToValueAtTime(scaledVolume, attackEnd);
       g.linearRampToValueAtTime(scaledVolume * s, offTime);
     } else {
-      // Attack cut short
       const level = a > 0 ? scaledVolume * ((offTime - startTime) / a) : scaledVolume;
       g.linearRampToValueAtTime(level, offTime);
     }
 
     g.linearRampToValueAtTime(0, endTime);
 
-    // Stop oscillators after the release tail
     const stopTime = endTime + 0.01;
     for (const osc of oscillators) {
       osc.stop(stopTime);
     }
 
-    // Non-critical cleanup of disconnected nodes
     const cleanupId = setTimeout(() => {
       try {
         for (const osc of oscillators) osc.disconnect();
         for (const p of panners) p.disconnect();
-        noteFilter.disconnect();
         gainNode.disconnect();
       } catch (_) { /* already disconnected */ }
     }, Math.max(0, (stopTime - ctx.currentTime) * 1000 + 200));
 
-    // Return cancel function for immediate silence (used by stop())
     return () => {
       const now = ctx.currentTime;
       g.cancelScheduledValues(now);
@@ -481,7 +355,6 @@ export class OscillatorVoice {
         try {
           for (const osc of oscillators) osc.disconnect();
           for (const p of panners) p.disconnect();
-          noteFilter.disconnect();
           gainNode.disconnect();
         } catch (_) { /* already disconnected */ }
       }, 50);
@@ -511,7 +384,6 @@ export class OscillatorVoice {
         for (const panner of note.panners) {
           panner.disconnect();
         }
-        note.filter.disconnect();
         note.gainNode.disconnect();
       } catch (_e) {
         // Ignore disconnection races while voice is being released.

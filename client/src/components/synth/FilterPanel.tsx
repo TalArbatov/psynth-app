@@ -1,40 +1,39 @@
-import { useOsc } from '../../context/PatchContext';
+import { usePatch } from '../../context/PatchContext';
 import { ModKnobControl } from './ModKnobControl';
 import type { ModDestination } from '../../models/patch.js';
 
-export function FilterPanel({ oscIndex }: { oscIndex: 0 | 1 }) {
-  const n = (oscIndex + 1) as 1 | 2;
-  const { osc, setOsc } = useOsc(oscIndex);
-  const cutoffDest: ModDestination = `filter${n}-cutoff`;
+export function FilterPanel() {
+  const { patch, dispatch } = usePatch();
+  const cutoffDest: ModDestination = 'filter-cutoff';
 
   return (
     <div
-      className={`filter-panel${osc.filterEnabled ? '' : ' disabled'}`}
-      id={`filter${n}-section`}
+      className={`filter-panel${patch.global.filterEnabled ? '' : ' disabled'}`}
+      id="filter-section"
     >
       <div className="filter-panel-header">
-        <span className="filter-panel-label">FILTER {n}</span>
+        <span className="filter-panel-label">FILTER</span>
         <div className="filter-header">
           <select
-            id={`filter-type${n}`}
-            value={osc.filterType}
-            onChange={(e) => setOsc({ filterType: e.target.value as BiquadFilterType })}
+            id="filter-type"
+            value={patch.global.filterType}
+            onChange={(e) => dispatch({ type: 'SET_GLOBAL', patch: { filterType: e.target.value as BiquadFilterType } })}
           >
             <option value="lowpass">Low Pass</option>
             <option value="highpass">High Pass</option>
             <option value="bandpass">Band Pass</option>
           </select>
           <button
-            className={`filter-toggle ${osc.filterEnabled ? 'on' : 'off'}`}
-            id={`filter-toggle${n}`}
-            onClick={() => setOsc({ filterEnabled: !osc.filterEnabled })}
+            className={`filter-toggle ${patch.global.filterEnabled ? 'on' : 'off'}`}
+            id="filter-toggle"
+            onClick={() => dispatch({ type: 'SET_GLOBAL', patch: { filterEnabled: !patch.global.filterEnabled } })}
           >
-            {osc.filterEnabled ? 'ON' : 'OFF'}
+            {patch.global.filterEnabled ? 'ON' : 'OFF'}
           </button>
         </div>
       </div>
-      <canvas className="filter-canvas" id={`filter${n}-canvas`} width="380" height="100"></canvas>
-      <div className="filter-values" id={`filter${n}-values`}></div>
+      <canvas className="filter-canvas" id="filter-canvas" width="380" height="100"></canvas>
+      <div className="filter-values" id="filter-values"></div>
     </div>
   );
 }

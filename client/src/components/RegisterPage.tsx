@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
+import { register } from '../api/auth.js';
 
 export function RegisterPage() {
     const [username, setLocalUsername] = useState('');
@@ -10,7 +10,7 @@ export function RegisterPage() {
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const navigate = useNavigate();
-    const { setUsername } = useAuth();
+    const { setUsername, setAccountId } = useAuth();
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -19,17 +19,9 @@ export function RegisterPage() {
         setSubmitting(true);
         setError('');
         try {
-            const res = await fetch(authUrl('/auth/register'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ username: username.trim(), email: email.trim(), password }),
-            });
-            if (!res.ok) {
-                const data = await res.json().catch(() => null);
-                throw new Error(data?.message || `Registration failed (${res.status})`);
-            }
+            const user = await register(username.trim(), email.trim(), password);
             setUsername(username);
+            if (user.id) setAccountId(user.id);
             navigate('/synth');
         } catch (e) {
             const message = e instanceof Error ? e.message : 'Registration failed';

@@ -108,7 +108,7 @@ const INITIAL_VALUES: FxValues = {
  * React-managed FX controls. This replaces imperative DOM binders by mapping
  * every control to explicit state transitions + effect API calls.
  */
-export function FxPage({ runtime, active }: { runtime: SynthRuntime | null; active: boolean }) {
+export function FxPage({ runtime, active, activePresetData, resetCount }: { runtime: SynthRuntime | null; active: boolean; activePresetData: Record<string, any> | null; resetCount: number }) {
   const [toggles, setToggles] = useState<ToggleState>(INITIAL_TOGGLES);
   const [values, setValues] = useState<FxValues>(INITIAL_VALUES);
 
@@ -157,6 +157,53 @@ export function FxPage({ runtime, active }: { runtime: SynthRuntime | null; acti
       makeup: values.compMakeup,
     });
   }, [runtime]); // apply defaults once runtime appears
+
+  // Apply loaded preset data to FX state + runtime
+  useEffect(() => {
+    if (!activePresetData?.fx) return;
+    const fx = activePresetData.fx as any;
+
+    setToggles({
+      saturation: fx.saturation.enabled,
+      eq: fx.eq.enabled,
+      chorus: fx.chorus.enabled,
+      delay: fx.delay.enabled,
+      reverb: fx.reverb.enabled,
+      compressor: fx.compressor.enabled,
+      delayPP: fx.delay.pingPong,
+    });
+
+    setValues({
+      satType: fx.saturation.type, satDrive: fx.saturation.drive,
+      satOutput: fx.saturation.output, satTone: fx.saturation.tone, satMix: fx.saturation.mix,
+      eqHp: fx.eq.hpFreq, eqBandFreq: fx.eq.bandFreq, eqBandGain: fx.eq.bandGain,
+      eqBandQ: fx.eq.bandQ, eqShelfFreq: fx.eq.shelfFreq, eqShelfGain: fx.eq.shelfGain,
+      chorusRate: fx.chorus.rate, chorusDepth: fx.chorus.depth, chorusDelay: fx.chorus.delay,
+      chorusSpread: fx.chorus.spread, chorusMix: fx.chorus.mix,
+      delayTime: fx.delay.time, delayFeedback: fx.delay.feedback,
+      delayMix: fx.delay.mix, delayFilter: fx.delay.filterFreq,
+      reverbSize: fx.reverb.size, reverbPredelay: fx.reverb.preDelay,
+      reverbDamping: fx.reverb.damping, reverbMix: fx.reverb.mix,
+      compThreshold: fx.compressor.threshold, compRatio: fx.compressor.ratio,
+      compAttack: fx.compressor.attack, compRelease: fx.compressor.release,
+      compMakeup: fx.compressor.makeup,
+    });
+
+    if (runtime) {
+      runtime.fxChain.saturation.setEnabled(fx.saturation.enabled);
+      runtime.fxChain.saturation.set({ type: fx.saturation.type, drive: fx.saturation.drive, output: fx.saturation.output, tone: fx.saturation.tone, mix: fx.saturation.mix });
+      runtime.fxChain.eq.setEnabled(fx.eq.enabled);
+      runtime.fxChain.eq.set({ hpFreq: fx.eq.hpFreq, bandFreq: fx.eq.bandFreq, bandGain: fx.eq.bandGain, bandQ: fx.eq.bandQ, shelfFreq: fx.eq.shelfFreq, shelfGain: fx.eq.shelfGain });
+      runtime.fxChain.chorus.setEnabled(fx.chorus.enabled);
+      runtime.fxChain.chorus.set({ rate: fx.chorus.rate, depth: fx.chorus.depth, delay: fx.chorus.delay, spread: fx.chorus.spread, mix: fx.chorus.mix });
+      runtime.fxChain.delay.setEnabled(fx.delay.enabled);
+      runtime.fxChain.delay.set({ time: fx.delay.time, feedback: fx.delay.feedback, mix: fx.delay.mix, pingPong: fx.delay.pingPong, filterFreq: fx.delay.filterFreq });
+      runtime.fxChain.reverb.setEnabled(fx.reverb.enabled);
+      runtime.fxChain.reverb.set({ size: fx.reverb.size, preDelay: fx.reverb.preDelay, damping: fx.reverb.damping, mix: fx.reverb.mix });
+      runtime.fxChain.compressor.setEnabled(fx.compressor.enabled);
+      runtime.fxChain.compressor.set({ threshold: fx.compressor.threshold, ratio: fx.compressor.ratio, attack: fx.compressor.attack, release: fx.compressor.release, makeup: fx.compressor.makeup });
+    }
+  }, [activePresetData, resetCount]);
 
   const setParam = <K extends keyof FxValues>(key: K, value: FxValues[K]) => {
     setValues((prev) => ({ ...prev, [key]: value }));

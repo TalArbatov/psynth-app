@@ -34,10 +34,11 @@ export function startAnimationLoop(
 
     const now = performance.now() / 1000;
     let masterVolMod = 0;
+    let filterMod = 0;
+    let hasFilterTarget = false;
+
     for (let i = 0; i < 2; i++) {
       const voice = engine.voices[i];
-      let filterMod = 0;
-      let hasFilterTarget = false;
       let oscVolMod = 0;
       let oscDetuneMod = 0;
       let oscUnisonDetuneMod = 0;
@@ -71,11 +72,6 @@ export function startAnimationLoop(
           oscUnisonSpreadMod += val;
         }
       }
-      if (hasFilterTarget) {
-        voice.applyModulatedCutoff(voice.cutoff * Math.pow(2, filterMod * 3));
-      } else {
-        voice.applyModulatedCutoff(voice.cutoff);
-      }
 
       // Modulate oscillator params from base control values so modulation never
       // accumulates and tracks what the user set on knobs.
@@ -100,6 +96,13 @@ export function startAnimationLoop(
       getKnob(`detune${oscN}`)?.setValue(hasOscDetuneTarget ? modulatedDetune : baseDetune);
       getKnob(`unison-detune${oscN}`)?.setValue(hasOscUnisonDetuneTarget ? modulatedUnisonDetune : baseUnisonDetune);
       getKnob(`unison-spread${oscN}`)?.setValue(hasOscUnisonSpreadTarget ? modulatedUnisonSpreadPct : baseUnisonSpreadPct);
+    }
+
+    // Apply global filter modulation (accumulated from both oscillators' LFOs)
+    if (hasFilterTarget) {
+      engine.applyModulatedCutoff(engine.cutoff * Math.pow(2, filterMod * 3));
+    } else {
+      engine.applyModulatedCutoff(engine.cutoff);
     }
 
     const baseMasterVolume = getBaseMasterVolume();

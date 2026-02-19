@@ -1,9 +1,40 @@
+// ── Preset types ──
+
+export type PresetSource = 'factory' | 'saved' | 'public';
+
+export type PresetSummary = {
+  id: string;
+  source: PresetSource;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+  authorName?: string;
+  synthVersion?: string;
+  patchSchemaVersion?: number;
+  likeCount?: number;
+  likedByMe?: boolean;
+  favoritedByMe?: boolean;
+};
+
+export type Preset = PresetSummary & {
+  data: Record<string, any>;
+};
+
+export type LoadedPresetRef = {
+  source: PresetSource;
+  id: string;
+  name: string;
+};
+
+/** @deprecated Use PresetSummary or Preset instead. */
+export type ServerPreset = { id: string; name: string; data: Record<string, any> };
+
 export type ModSource = 'lfo1' | 'lfo2' | 'lfo3' | 'lfo4' | 'env1' | 'env2';
 
 export type ModDestination =
   | 'osc1-level' | 'osc1-detune' | 'osc1-unison-detune' | 'osc1-unison-spread'
   | 'osc2-level' | 'osc2-detune' | 'osc2-unison-detune' | 'osc2-unison-spread'
-  | 'filter1-cutoff' | 'filter2-cutoff'
+  | 'filter-cutoff'
   | 'master-volume'
   | 'fx-sat-drive' | 'fx-sat-mix'
   | 'fx-chorus-rate' | 'fx-chorus-depth' | 'fx-chorus-mix'
@@ -30,8 +61,6 @@ export interface OscPatch {
   unisonCount: number;
   unisonDetune: number;
   unisonSpread: number;
-  filterEnabled: boolean;
-  filterType: BiquadFilterType;
   adsr: { a: number; d: number; s: number; r: number };
 }
 
@@ -72,6 +101,10 @@ export interface Patch {
     voiceMode: 'poly' | 'mono';
     glide: number;
     bpm: number;
+    filterEnabled: boolean;
+    filterType: BiquadFilterType;
+    filterCutoff: number;
+    filterResonance: number;
   };
   oscillators: [OscPatch, OscPatch];
   lfos: [LfoPatch, LfoPatch, LfoPatch, LfoPatch];
@@ -93,8 +126,6 @@ function defaultOsc(waveform: OscillatorType): OscPatch {
     unisonCount: 1,
     unisonDetune: 20,
     unisonSpread: 50,
-    filterEnabled: true,
-    filterType: 'lowpass',
     adsr: { a: 0.01, d: 0.1, s: 0.7, r: 0.3 },
   };
 }
@@ -117,7 +148,7 @@ function defaultLfo(): LfoPatch {
 export const DEFAULT_PATCH: Patch = {
   name: 'Init',
   version: 1,
-  global: { masterVolume: 0.7, voiceMode: 'poly', glide: 0, bpm: 120 },
+  global: { masterVolume: 0.7, voiceMode: 'poly', glide: 0, bpm: 120, filterEnabled: true, filterType: 'lowpass', filterCutoff: 2000, filterResonance: 1 },
   oscillators: [defaultOsc('sawtooth'), defaultOsc('triangle')],
   lfos: [defaultLfo(), defaultLfo(), defaultLfo(), defaultLfo()],
   envelopes: [{ a: 0.01, d: 0.1, s: 0.7, r: 0.3 }, { a: 0.01, d: 0.1, s: 0.7, r: 0.3 }],

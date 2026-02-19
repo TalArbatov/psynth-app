@@ -12,6 +12,7 @@ interface LayoutKey extends PianoKey {
 interface KeyboardHandlers {
   onNoteOn: (freq: number) => void;
   onNoteOff: (freq: number) => void;
+  isEnabled?: () => boolean;
 }
 
 interface Point {
@@ -19,7 +20,7 @@ interface Point {
   y: number;
 }
 
-export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNoteOff }: KeyboardHandlers): PianoKeyboardView {
+export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNoteOff, isEnabled }: KeyboardHandlers): PianoKeyboardView {
   const tempCtx = canvas.getContext('2d');
   if (!tempCtx) {
     throw new Error('2D context is required for piano keyboard.');
@@ -229,6 +230,7 @@ export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNot
 
   document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.repeat) return;
+    if (isEnabled && !isEnabled()) return;
     const lower = e.key.toLowerCase();
 
     if (lower === 'z' || lower === 'x') {
@@ -249,6 +251,7 @@ export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNot
   });
 
   document.addEventListener('keyup', (e: KeyboardEvent) => {
+    if (isEnabled && !isEnabled()) return;
     const lower = e.key.toLowerCase();
     const k = keyToNote.get(lower);
     if (!k) return;

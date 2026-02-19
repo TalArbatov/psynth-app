@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '../../context/SessionContext';
-import { apiUrl } from '../../config/api';
+import { findSession } from '../../api/sessions.js';
 
 export function JoinSessionTab() {
     const [step, setStep] = useState<'session' | 'username'>('session');
@@ -25,19 +25,9 @@ export function JoinSessionTab() {
         setSubmitting(true);
         setError('');
         try {
-            const res = await fetch(apiUrl(`/session?name=${encodeURIComponent(sessionName.trim())}`));
-            if (!res.ok) {
-                if (res.status === 404) {
-                    throw new Error('Session not found');
-                }
-                throw new Error(`Server returned ${res.status}`);
-            }
-            const data = await res.json() as { sessionId?: string };
-            if (!data.sessionId) {
-                throw new Error('Missing sessionId in response');
-            }
-            setSession({ sessionId: data.sessionId, username: username.trim() });
-            navigate(`/session/${data.sessionId}`);
+            const sessionId = await findSession(sessionName.trim());
+            setSession({ sessionId, username: username.trim() });
+            navigate(`/session/${sessionId}`);
         } catch (e) {
             const message = e instanceof Error ? e.message : 'Failed to join session';
             setError(message);

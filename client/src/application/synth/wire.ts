@@ -13,13 +13,8 @@ export function wireSynth(runtime: SynthRuntime, views: SynthViews) {
   import('../../modules/filter-graph.js')
     .then(({ createFilterGraph }) => {
       drawList.push(
-        createFilterGraph(byCanvasId('filter1-canvas'), byId('filter1-values'), engine.voices[0], () => {
-          sync.send({ t: 'filter', n: 0, cutoff: engine.voices[0].cutoff, q: engine.voices[0].resonance });
-        }),
-      );
-      drawList.push(
-        createFilterGraph(byCanvasId('filter2-canvas'), byId('filter2-values'), engine.voices[1], () => {
-          sync.send({ t: 'filter', n: 1, cutoff: engine.voices[1].cutoff, q: engine.voices[1].resonance });
+        createFilterGraph(byCanvasId('filter-canvas'), byId('filter-values'), engine, () => {
+          sync.send({ t: 'filter', cutoff: engine.cutoff, q: engine.resonance });
         }),
       );
     })

@@ -29,7 +29,7 @@ export function initSyncOutbound(sync: SyncClient): void {
 
   // Sync toggle buttons
   const syncedButtons = new Set([
-    'toggle1', 'toggle2', 'filter-toggle1', 'filter-toggle2',
+    'toggle1', 'toggle2', 'filter-toggle',
     'fx-saturation-toggle', 'fx-eq-toggle', 'fx-chorus-toggle',
     'fx-delay-toggle', 'fx-delay-pp', 'fx-reverb-toggle', 'fx-compressor-toggle'
   ]);
@@ -80,8 +80,8 @@ export function initSyncReceive(
       adsr.r = msg.r;
       adsrGraphs[msg.n].draw();
     } else if (msg.t === 'filter') {
-      engine.voices[msg.n].setFilterCutoff(msg.cutoff);
-      engine.voices[msg.n].setFilterResonance(msg.q);
+      engine.setFilterCutoff(msg.cutoff);
+      engine.setFilterResonance(msg.q);
     } else if (msg.t === 'noteOn') {
       engine.noteOn(msg.f);
       keyboard.remoteNoteOn(msg.f);

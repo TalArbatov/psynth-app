@@ -21,8 +21,7 @@ export function SerumLayout({ runtime }: { runtime: SynthRuntime | null }) {
 
           <div className="serum-col serum-col-center">
             <canvas id="waveform-canvas" width="400" height="80"></canvas>
-            <FilterPanel oscIndex={0} />
-            <FilterPanel oscIndex={1} />
+            <FilterPanel />
           </div>
 
           <div className="serum-col serum-col-right">

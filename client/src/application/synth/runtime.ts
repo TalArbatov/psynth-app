@@ -14,11 +14,11 @@ export function createSynthRuntime() {
   const fxChain = createFXChain(engine.audioCtx);
 
   engine.masterGain.disconnect();
-  engine.masterGain.connect(fxChain.input);
+  engine.wireFilter(fxChain.input);
   fxChain.output.connect(engine.analyser);
 
   const lfos = [0, 1].map(() => Array.from({ length: 4 }, () => new LFO()));
-  const state = { baseMasterVolume: 0.7 };
+  const state = { baseMasterVolume: 0.7, keyboardEnabled: true };
 
   engine.voices[0].setWaveform('sawtooth');
   engine.voices[1].setWaveform('triangle');

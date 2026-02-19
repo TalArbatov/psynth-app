@@ -19,8 +19,7 @@ export const MOD_DESTINATION_LABELS: Record<ModDestination, string> = {
   'osc2-detune': 'Osc 2 Detune',
   'osc2-unison-detune': 'Osc 2 Uni Det',
   'osc2-unison-spread': 'Osc 2 Spread',
-  'filter1-cutoff': 'Filter 1 Cutoff',
-  'filter2-cutoff': 'Filter 2 Cutoff',
+  'filter-cutoff': 'Filter Cutoff',
   'master-volume': 'Master Volume',
   'fx-sat-drive': 'Sat Drive',
   'fx-sat-mix': 'Sat Mix',
@@ -87,14 +86,8 @@ export function applyModToEngine(
         engine.voices[1].applyModulatedUnisonSpread(Math.max(0, Math.min(1, basePct / 100 + mod * 0.5)));
         break;
       }
-      case 'filter1-cutoff': {
-        const voice = engine.voices[0];
-        voice.applyModulatedCutoff(voice.cutoff * Math.pow(2, mod * 3));
-        break;
-      }
-      case 'filter2-cutoff': {
-        const voice = engine.voices[1];
-        voice.applyModulatedCutoff(voice.cutoff * Math.pow(2, mod * 3));
+      case 'filter-cutoff': {
+        engine.applyModulatedCutoff(engine.cutoff * Math.pow(2, mod * 3));
         break;
       }
       case 'master-volume': {

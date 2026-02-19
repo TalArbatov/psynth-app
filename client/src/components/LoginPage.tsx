@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
+import { login } from '../api/auth.js';
 
 export function LoginPage() {
     const [email, setEmail] = useState('');
@@ -9,7 +9,7 @@ export function LoginPage() {
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const navigate = useNavigate();
-    const { setUsername } = useAuth();
+    const { setUsername, setAccountId } = useAuth();
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -18,17 +18,9 @@ export function LoginPage() {
         setSubmitting(true);
         setError('');
         try {
-            const res = await fetch(authUrl('/auth/login'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ email: email.trim(), password }),
-            });
-            if (!res.ok) {
-                const data = await res.json().catch(() => null);
-                throw new Error(data?.message || `Login failed (${res.status})`);
-            }
+            const user = await login(email.trim(), password);
             setUsername(email.trim());
+            if (user.id) setAccountId(user.id);
             navigate('/synth');
         } catch (e) {
             const message = e instanceof Error ? e.message : 'Login failed';
