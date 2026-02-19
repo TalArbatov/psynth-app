@@ -72,6 +72,11 @@ export function listPublic(q?: string): Promise<PresetSummary[]> {
   return listTab('public', q);
 }
 
+function listPath(source: PresetSource): string {
+  if (source === 'saved') return '/api/v1/me/presets';
+  return `/api/v1/presets/${source}`;
+}
+
 function listTab(source: PresetSource, q?: string): Promise<PresetSummary[]> {
   const cacheKey = q ? `${source}?q=${q}` : source;
   if (!q) {
@@ -79,9 +84,8 @@ function listTab(source: PresetSource, q?: string): Promise<PresetSummary[]> {
     if (hit) return Promise.resolve(hit);
   }
   return dedup(`list:${cacheKey}`, async () => {
-    const path = q
-      ? `/api/presets/${source}?q=${encodeURIComponent(q)}`
-      : `/api/presets/${source}`;
+    const base = listPath(source);
+    const path = q ? `${base}?q=${encodeURIComponent(q)}` : base;
     const body = await api<{ data: any[] }>(path);
     const items = (body.data ?? []).map(s => normalizeSummary(s, source));
     if (!q) cache(summaryCache, source, items);
@@ -97,8 +101,10 @@ export function getPreset(source: PresetSource, id: string): Promise<Preset> {
   if (hit) return Promise.resolve(hit);
 
   return dedup(`get:${key}`, async () => {
-    const res = await api<any>(`/api/presets/${source}/${id}`);
-    // Server returns { data: { _id, name, ..., data_json: { voices, filter, ... } } }
+    const path = source === 'saved'
+      ? `/api/v1/me/presets/${id}`
+      : `/api/v1/presets/${source}/${id}`;
+    const res = await api<any>(path);
     const record = res.data ?? res;
     const preset: Preset = {
       id: record._id ?? record.id ?? id,
@@ -129,7 +135,7 @@ export async function createSaved(body: {
   copiedFrom?: { source: PresetSource; id: string };
 }): Promise<PresetSummary> {
   const { data, ...rest } = body;
-  const result = await api<any>('/api/presets/saved', {
+  const result = await api<any>('/api/v1/me/presets', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...rest, data_json: data }),
@@ -145,7 +151,7 @@ export async function updateSaved(id: string, body: {
 }): Promise<PresetSummary> {
   const { data, ...rest } = body;
   const payload = data ? { ...rest, data_json: data } : rest;
-  const result = await api<any>(`/api/presets/saved/${id}`, {
+  const result = await api<any>(`/api/v1/me/presets/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -157,52 +163,35 @@ export async function updateSaved(id: string, body: {
 }
 
 export async function deleteSaved(id: string): Promise<void> {
-  await api<{ ok: true }>(`/api/presets/saved/${id}`, { method: 'DELETE' });
+  await api<{ ok: true }>(`/api/v1/me/presets/${id}`, { method: 'DELETE' });
   summaryCache.delete('saved');
   presetCache.delete(pkey('saved', id));
 }
 
-export async function copyPublicToSaved(id: string, name?: string): Promise<PresetSummary> {
-  const result = await api<any>(`/api/presets/public/${id}/copy`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(name ? { name } : {}),
-  });
-  summaryCache.delete('saved');
-  const record = result.preset ?? result.data ?? result;
-  return normalizeSummary(record, 'saved');
-}
-
-export async function publishSaved(id: string): Promise<void> {
-  await api(`/api/presets/public/publish/${id}`, { method: 'POST' });
-  summaryCache.delete('public');
-}
-
 export async function likePreset(id: string): Promise<{ likeCount: number | null; likedByMe: boolean | null }> {
-  const result = await api<any>(`/api/presets/${id}/like`, { method: 'POST' });
+  const result = await api<any>(`/api/v1/presets/${id}/likes`, { method: 'POST' });
   summaryCache.delete('public');
   return { likeCount: result.likes_count ?? result.likeCount ?? null, likedByMe: result.liked_by_me ?? result.likedByMe ?? null };
 }
 
 export async function unlikePreset(id: string): Promise<{ likeCount: number | null; likedByMe: boolean | null }> {
-  const result = await api<any>(`/api/presets/${id}/like`, { method: 'DELETE' });
+  const result = await api<any>(`/api/v1/presets/${id}/likes`, { method: 'DELETE' });
   summaryCache.delete('public');
   return { likeCount: result.likes_count ?? result.likeCount ?? null, likedByMe: result.liked_by_me ?? result.likedByMe ?? null };
 }
 
 export async function favoritePreset(id: string): Promise<void> {
-  await api(`/api/presets/${id}/favorite`, { method: 'POST' });
+  await api(`/api/v1/presets/${id}/favorites`, { method: 'POST' });
   summaryCache.delete('public');
 }
 
 export async function unfavoritePreset(id: string): Promise<void> {
-  await api(`/api/presets/${id}/favorite`, { method: 'DELETE' });
+  await api(`/api/v1/presets/${id}/favorites`, { method: 'DELETE' });
   summaryCache.delete('public');
 }
 
-/** Copy any preset to saved (works for factory too). */
+/** Copy any preset to saved by fetching its data and creating a new saved preset. */
 export async function copyToSaved(source: PresetSource, id: string, name?: string): Promise<PresetSummary> {
-  if (source === 'public') return copyPublicToSaved(id, name);
   const preset = getCachedPreset(source, id) ?? await getPreset(source, id);
   return createSaved({ name: name ?? preset.name, data: preset.data, copiedFrom: { source, id } });
 }

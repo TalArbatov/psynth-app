@@ -8,14 +8,14 @@ export type AuthUser = {
 };
 
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
-  const res = await fetch(authServiceUrl('/auth/me'), { credentials: 'include' });
+  const res = await fetch(authServiceUrl('/api/v1/auth/me'), { credentials: 'include' });
   if (!res.ok) return null;
   const data = await res.json();
   return data?.user ?? null;
 }
 
 export async function login(email: string, password: string): Promise<AuthUser> {
-  const res = await fetch(authServiceUrl('/auth/login'), {
+  const res = await fetch(authServiceUrl('/api/v1/auth/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -34,7 +34,7 @@ export async function register(
   email: string,
   password: string,
 ): Promise<AuthUser> {
-  const res = await fetch(authServiceUrl('/auth/register'), {
+  const res = await fetch(authServiceUrl('/api/v1/accounts'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -49,7 +49,7 @@ export async function register(
 }
 
 export async function logout(): Promise<void> {
-  await fetch(authServiceUrl('/auth/logout'), {
+  await fetch(authServiceUrl('/api/v1/auth/logout'), {
     method: 'POST',
     credentials: 'include',
   }).catch(() => {});

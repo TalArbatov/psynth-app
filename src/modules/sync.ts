@@ -16,8 +16,9 @@ export function createSync(baseUrl?: string): SyncClient {
     // http://host:port → ws://host:port, https://… → wss://…
     wsUrl = baseUrl.replace(/^http/, 'ws');
   } else {
+    // No explicit base URL — connect via the same host (Vite proxy in dev)
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    wsUrl = `${protocol}//${location.host}`;
+    wsUrl = `${protocol}//${location.host}/ws`;
   }
   const ws = new WebSocket(wsUrl);
 

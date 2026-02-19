@@ -65,7 +65,6 @@ export interface PresetStoreValue {
   // Preset management
   renamePreset(id: string, name: string): Promise<void>;
   duplicatePreset(source: PresetSource, id: string): Promise<void>;
-  publishPreset(id: string): Promise<void>;
   likePreset(id: string): Promise<void>;
   favoritePreset(id: string): Promise<void>;
   deletePreset(id: string): Promise<void>;
@@ -268,11 +267,6 @@ export function usePresetStore(runtime: SynthRuntime | null): PresetStoreValue {
     patchSavedList(items => [summary, ...items]);
   }, []);
 
-  const publishPreset = useCallback(async (id: string) => {
-    await presetApi.publishSaved(id);
-    fetchTab('public');
-  }, [fetchTab]);
-
   const toggleLikePreset = useCallback(async (id: string) => {
     const current = lists.public.items.find(s => s.id === id);
     const wasLiked = current?.likedByMe ?? false;
@@ -351,7 +345,6 @@ export function usePresetStore(runtime: SynthRuntime | null): PresetStoreValue {
 
     renamePreset,
     duplicatePreset,
-    publishPreset,
     likePreset: toggleLikePreset,
     favoritePreset: toggleFavoritePreset,
     deletePreset,

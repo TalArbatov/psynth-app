@@ -48,7 +48,7 @@ export function PresetBrowser({ open, onClose, store, runtime }: Props) {
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [copiedIds, setCopiedIds] = useState<Set<string>>(new Set());
-  const [publishedIds, setPublishedIds] = useState<Set<string>>(new Set());
+
   const renameRef = useRef<HTMLInputElement>(null);
 
   const listRef   = useRef<HTMLDivElement>(null);
@@ -91,7 +91,6 @@ export function PresetBrowser({ open, onClose, store, runtime }: Props) {
     setConfirmAction(null);
     setRenaming(false);
     setCopiedIds(new Set());
-    setPublishedIds(new Set());
   }, [open]);
 
   // ── Fetch tab list on tab switch or open ──
@@ -385,13 +384,6 @@ export function PresetBrowser({ open, onClose, store, runtime }: Props) {
                       <button className="preset-browser-btn" onClick={startRename}>Rename</button>
                       <button className="preset-browser-btn" onClick={() => store.duplicatePreset(focused.source, focused.id)}>
                         Duplicate
-                      </button>
-                      <button
-                        className={`preset-browser-btn${publishedIds.has(focused.id) ? ' done' : ''}`}
-                        disabled={publishedIds.has(focused.id)}
-                        onClick={() => store.publishPreset(focused.id).then(() => setPublishedIds(s => new Set(s).add(focused!.id)))}
-                      >
-                        {publishedIds.has(focused.id) ? (<><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="#4caf50" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg> Published</>) : 'Publish'}
                       </button>
                       <button className="preset-browser-btn danger" onClick={() => attemptDelete(focused)}>
                         Delete
