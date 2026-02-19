@@ -1,5 +1,2 @@
-client/node_modules/
-client/dist/
-
-server/node_modules/
-server/dist/
+node_modules/
+dist/

@@ -1,14 +1,11 @@
-#!/usr/bin/env bash
-# set -euo pipefail
+#!/bin/bash
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+echo "Step 1 - building the web app"
 
-echo hello
-echo $REPO_ROOT
+npm run build
 
-npm --prefix "${REPO_ROOT}/client" run build
-npm --prefix "${REPO_ROOT}/server" run build
+echo "Step 2 - copying the files to the server"
 
-docker build --platform=linux/amd64 -t talarbatov/psynth-app "${REPO_ROOT}"
-docker push talarbatov/psynth-app:latest
+scp -r /Users/tal/dev/psynth/psynth-web/dist root@64.176.164.119:/root/dev/psynth-web-static-files
+
+echo "Deploy successful!"
