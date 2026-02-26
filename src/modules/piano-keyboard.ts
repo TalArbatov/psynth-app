@@ -1,6 +1,7 @@
 import { KEY_MAP } from './constants.js';
 import { buildKeys, findKeyByName } from './notes.js';
 import type { PianoKey, PianoKeyboardView } from './types.js';
+import { activeTheme } from './theme.js';
 
 interface LayoutKey extends PianoKey {
   x: number;
@@ -74,7 +75,7 @@ export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNot
 
     for (const k of whites) {
       const active = activeFreqs.has(k.freq);
-      ctx.fillStyle = active ? '#e94560' : '#f0f0f0';
+      ctx.fillStyle = active ? activeTheme.signal : activeTheme.pianoWhite;
       ctx.fillRect(k.x, k.y, k.w, k.h);
       ctx.strokeStyle = '#999';
       ctx.lineWidth = 1;
@@ -88,7 +89,7 @@ export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNot
 
     for (const k of blacks) {
       const active = activeFreqs.has(k.freq);
-      ctx.fillStyle = active ? '#e94560' : '#222';
+      ctx.fillStyle = active ? activeTheme.signal : activeTheme.pianoBlack;
       ctx.fillRect(k.x, k.y, k.w, k.h);
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 1;
@@ -101,7 +102,7 @@ export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNot
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
 
-    ctx.fillStyle = 'rgba(233, 69, 96, 0.85)';
+    ctx.fillStyle = `rgba(${activeTheme.signalRgb}, 0.85)`;
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(`C${baseOctave}-B${baseOctave + 1}  [Z/X]`, W - 8, 14);
@@ -228,7 +229,7 @@ export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNot
     keyToNote.clear();
   }
 
-  document.addEventListener('keydown', (e: KeyboardEvent) => {
+  function onDocKeyDown(e: KeyboardEvent): void {
     if (e.repeat) return;
     if (isEnabled && !isEnabled()) return;
     const lower = e.key.toLowerCase();
@@ -248,16 +249,24 @@ export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNot
     if (!k) return;
     keyToNote.set(lower, k);
     activate(k);
-  });
+  }
 
-  document.addEventListener('keyup', (e: KeyboardEvent) => {
+  function onDocKeyUp(e: KeyboardEvent): void {
     if (isEnabled && !isEnabled()) return;
     const lower = e.key.toLowerCase();
     const k = keyToNote.get(lower);
     if (!k) return;
     keyToNote.delete(lower);
     deactivate(k);
-  });
+  }
+
+  document.addEventListener('keydown', onDocKeyDown);
+  document.addEventListener('keyup', onDocKeyUp);
+
+  function destroy(): void {
+    document.removeEventListener('keydown', onDocKeyDown);
+    document.removeEventListener('keyup', onDocKeyUp);
+  }
 
   draw();
   return {
@@ -267,7 +276,8 @@ export function createPianoKeyboard(canvas: HTMLCanvasElement, { onNoteOn, onNot
     },
     remoteNoteOff(freq: number) {
       activeFreqs.delete(freq);
-    }
+    },
+    destroy,
   };
 }
 

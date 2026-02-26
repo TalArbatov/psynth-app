@@ -1,4 +1,5 @@
 import type { EQUnit } from './types.js';
+import { activeTheme } from './theme.js';
 
 const MIN_FREQ = 20;
 const MAX_FREQ = 20000;
@@ -38,7 +39,7 @@ export function createEQGraph(canvas: HTMLCanvasElement, eq: EQUnit) {
   }
 
   function drawGrid(): void {
-    ctx.strokeStyle = '#152040';
+    ctx.strokeStyle = activeTheme.grid;
     ctx.lineWidth = 1;
 
     for (const db of [-18, -12, -6, 0, 6, 12, 18]) {
@@ -48,7 +49,7 @@ export function createEQGraph(canvas: HTMLCanvasElement, eq: EQUnit) {
       ctx.lineTo(pad.left + plotW, y);
       ctx.stroke();
 
-      ctx.fillStyle = '#334';
+      ctx.fillStyle = activeTheme.gridLabel;
       ctx.font = '8px monospace';
       ctx.textAlign = 'right';
       ctx.fillText(`${db}`, pad.left - 4, y + 3);
@@ -64,7 +65,7 @@ export function createEQGraph(canvas: HTMLCanvasElement, eq: EQUnit) {
     }
     ctx.setLineDash([]);
 
-    ctx.fillStyle = '#445';
+    ctx.fillStyle = activeTheme.gridLabel;
     ctx.font = '9px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('100', freqToX(100), pad.top + plotH + 14);
@@ -74,7 +75,7 @@ export function createEQGraph(canvas: HTMLCanvasElement, eq: EQUnit) {
 
   function draw(): void {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#0a1628';
+    ctx.fillStyle = activeTheme.bgGraph;
     ctx.beginPath();
     ctx.roundRect(0, 0, canvas.width, canvas.height, 6);
     ctx.fill();
@@ -97,7 +98,7 @@ export function createEQGraph(canvas: HTMLCanvasElement, eq: EQUnit) {
         ctx.lineTo(x, y);
       }
     }
-    ctx.strokeStyle = '#00d2ff';
+    ctx.strokeStyle = activeTheme.accent;
     ctx.lineWidth = 2;
     ctx.stroke();
   }

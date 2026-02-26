@@ -19,6 +19,11 @@ export function registerKnob(id: string, knob: KnobInstance): void {
   knobInstances.set(id, knob);
 }
 
+/** Remove a knob instance by its DOM element ID. */
+export function unregisterKnob(id: string): void {
+  knobInstances.delete(id);
+}
+
 /**
  * Replace every `<input type="range">` inside `#synth` with a
  * canvas-based rotary knob + hidden input pair.

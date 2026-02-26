@@ -141,7 +141,14 @@ export class StepSequencer {
 
         const freq = noteToFreq(step.note);
         const stepDur = this.getStepDuration(index);
-        const gateDur = stepDur * step.gate;
+        const rawGateDur = stepDur * step.gate;
+        // Sequencer gate can be shorter than voice attack, which causes
+        // high-attack patches to be released before they fully bloom.
+        const maxAttack = this.engine.voices.reduce(
+            (max, voice) => voice.enabled ? Math.max(max, voice.adsr.a) : max,
+            0,
+        );
+        const gateDur = Math.max(rawGateDur, maxAttack);
 
         // Schedule the entire note on the Web Audio timeline — runs on
         // the audio thread, immune to main-thread jank from React renders.

@@ -7,6 +7,7 @@ interface ActiveNote {
   panners: StereoPannerNode[];
   gainNode: GainNode;
   envRatio?: number;
+  startTime: number;
 }
 
 export class OscillatorVoice {
@@ -169,7 +170,7 @@ export class OscillatorVoice {
       panners.push(panner);
     }
 
-    this.activeNotes.set(freq, { oscillators, panners, gainNode });
+    this.activeNotes.set(freq, { oscillators, panners, gainNode, startTime: now });
   }
 
   noteOn(freq: number): void {
@@ -218,7 +219,7 @@ export class OscillatorVoice {
     g.linearRampToValueAtTime(scaledVolume, now + this.adsr.a);
     g.linearRampToValueAtTime(scaledVolume * this.adsr.s, now + this.adsr.a + this.adsr.d);
 
-    this.activeNotes.set(freq, { oscillators, panners, gainNode });
+    this.activeNotes.set(freq, { oscillators, panners, gainNode, startTime: now });
 
     if (this.onNoteOn) this.onNoteOn(freq);
   }
@@ -226,8 +227,11 @@ export class OscillatorVoice {
   applyModulatedVolume(volume: number): void {
     const now = this.audioCtx.currentTime;
     for (const note of this.activeNotes.values()) {
+      const elapsed = now - note.startTime;
+      // Don't override ADSR attack/decay ramps — only modulate during sustain
+      if (elapsed < this.adsr.a + this.adsr.d) continue;
       const n = note.oscillators.length || 1;
-      note.gainNode.gain.setValueAtTime(volume / Math.sqrt(n) * (note.envRatio ?? 1), now);
+      note.gainNode.gain.setValueAtTime(volume / Math.sqrt(n) * this.adsr.s, now);
     }
   }
 

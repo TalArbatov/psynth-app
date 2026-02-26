@@ -1,4 +1,5 @@
 import type { Drawable } from './types.js';
+import { activeTheme } from './theme.js';
 
 export function createWaveformDisplay(canvas: HTMLCanvasElement, analyser: AnalyserNode): Drawable {
   const tempCtx = canvas.getContext('2d');
@@ -12,11 +13,11 @@ export function createWaveformDisplay(canvas: HTMLCanvasElement, analyser: Analy
   function draw(): void {
     analyser.getByteTimeDomainData(dataArr);
 
-    ctx.fillStyle = '#0f3460';
+    ctx.fillStyle = activeTheme.bgWaveform;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#e94560';
+    ctx.strokeStyle = activeTheme.signal;
     ctx.beginPath();
 
     const sliceW = canvas.width / bufLen;

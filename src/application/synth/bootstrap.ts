@@ -9,6 +9,6 @@ import { wireSynth } from './wire.js';
 export function bootstrapSynth() {
   const runtime = createSynthRuntime();
   const views = createSynthViews(runtime);
-  wireSynth(runtime, views);
-  return runtime;
+  const destroy = wireSynth(runtime, views);
+  return { runtime, destroy };
 }

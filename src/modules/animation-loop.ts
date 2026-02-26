@@ -20,7 +20,7 @@ export function startAnimationLoop(
   lfos: LFO[][],
   drawList: Drawable[],
   getBaseMasterVolume: () => number
-): void {
+): () => void {
   const masterVolumeVal = document.getElementById('master-volume-val')!;
   const readBaseValue = (id: string, fallback: number): number => {
     const el = document.getElementById(id) as HTMLInputElement | null;
@@ -29,13 +29,18 @@ export function startAnimationLoop(
     return Number.isNaN(parsed) ? fallback : parsed;
   };
 
+  let rafId = 0;
+  let lastMasterVol = -1;
+  let hasMasterVolTarget = false;
+
   function animate(): void {
-    requestAnimationFrame(animate);
+    rafId = requestAnimationFrame(animate);
 
     const now = performance.now() / 1000;
     let masterVolMod = 0;
     let filterMod = 0;
     let hasFilterTarget = false;
+    hasMasterVolTarget = false;
 
     for (let i = 0; i < 2; i++) {
       const voice = engine.voices[i];
@@ -54,7 +59,10 @@ export function startAnimationLoop(
           hasFilterTarget = true;
           filterMod += val;
         }
-        if (lfo.hasTarget('volume')) masterVolMod += val;
+        if (lfo.hasTarget('volume')) {
+          hasMasterVolTarget = true;
+          masterVolMod += val;
+        }
         if (lfo.hasTarget('osc-volume')) {
           hasOscVolumeTarget = true;
           oscVolMod += val;
@@ -76,45 +84,60 @@ export function startAnimationLoop(
       // Modulate oscillator params from base control values so modulation never
       // accumulates and tracks what the user set on knobs.
       const oscN = i + 1;
-      const baseVolume = readBaseValue(`volume${oscN}`, voice.volume);
-      const baseDetune = readBaseValue(`detune${oscN}`, voice.detune);
-      const baseUnisonDetune = readBaseValue(`unison-detune${oscN}`, voice.unisonDetune);
-      const baseUnisonSpreadPct = readBaseValue(`unison-spread${oscN}`, voice.unisonSpread * 100);
 
-      const modulatedVoiceVolume = Math.max(0, Math.min(1, baseVolume * (1 + oscVolMod)));
-      const modulatedDetune = baseDetune + oscDetuneMod * 100;
-      const modulatedUnisonDetune = Math.max(0, baseUnisonDetune + oscUnisonDetuneMod * 50);
-      const modulatedUnisonSpreadPct = Math.max(0, Math.min(100, baseUnisonSpreadPct + oscUnisonSpreadMod * 50));
+      if (hasOscVolumeTarget) {
+        const baseVolume = readBaseValue(`volume${oscN}`, voice.volume);
+        const modulatedVoiceVolume = Math.max(0, Math.min(1, baseVolume * (1 + oscVolMod)));
+        voice.applyModulatedVolume(modulatedVoiceVolume);
+        getKnob(`volume${oscN}`)?.setValue(modulatedVoiceVolume);
+      }
 
-      voice.applyModulatedVolume(modulatedVoiceVolume);
-      voice.applyModulatedDetune(modulatedDetune);
-      voice.applyModulatedUnisonDetune(modulatedUnisonDetune);
-      voice.applyModulatedUnisonSpread(modulatedUnisonSpreadPct / 100);
+      if (hasOscDetuneTarget) {
+        const baseDetune = readBaseValue(`detune${oscN}`, voice.detune);
+        const modulatedDetune = baseDetune + oscDetuneMod * 100;
+        voice.applyModulatedDetune(modulatedDetune);
+        getKnob(`detune${oscN}`)?.setValue(modulatedDetune);
+      }
 
-      // Reflect modulation on the corresponding knobs when targeted.
-      getKnob(`volume${oscN}`)?.setValue(hasOscVolumeTarget ? modulatedVoiceVolume : baseVolume);
-      getKnob(`detune${oscN}`)?.setValue(hasOscDetuneTarget ? modulatedDetune : baseDetune);
-      getKnob(`unison-detune${oscN}`)?.setValue(hasOscUnisonDetuneTarget ? modulatedUnisonDetune : baseUnisonDetune);
-      getKnob(`unison-spread${oscN}`)?.setValue(hasOscUnisonSpreadTarget ? modulatedUnisonSpreadPct : baseUnisonSpreadPct);
+      if (hasOscUnisonDetuneTarget) {
+        const baseUnisonDetune = readBaseValue(`unison-detune${oscN}`, voice.unisonDetune);
+        const modulatedUnisonDetune = Math.max(0, baseUnisonDetune + oscUnisonDetuneMod * 50);
+        voice.applyModulatedUnisonDetune(modulatedUnisonDetune);
+        getKnob(`unison-detune${oscN}`)?.setValue(modulatedUnisonDetune);
+      }
+
+      if (hasOscUnisonSpreadTarget) {
+        const baseUnisonSpreadPct = readBaseValue(`unison-spread${oscN}`, voice.unisonSpread * 100);
+        const modulatedUnisonSpreadPct = Math.max(0, Math.min(100, baseUnisonSpreadPct + oscUnisonSpreadMod * 50));
+        voice.applyModulatedUnisonSpread(modulatedUnisonSpreadPct / 100);
+        getKnob(`unison-spread${oscN}`)?.setValue(modulatedUnisonSpreadPct);
+      }
     }
 
     // Apply global filter modulation (accumulated from both oscillators' LFOs)
     if (hasFilterTarget) {
       engine.applyModulatedCutoff(engine.cutoff * Math.pow(2, filterMod * 3));
-    } else {
-      engine.applyModulatedCutoff(engine.cutoff);
     }
 
     const baseMasterVolume = getBaseMasterVolume();
     const modVol = Math.max(0, Math.min(1, baseMasterVolume * (1 + masterVolMod)));
-    engine.masterGain.gain.setValueAtTime(modVol, engine.audioCtx.currentTime);
-    getKnob('master-volume')?.setValue(modVol);
-    masterVolumeVal.textContent = modVol.toFixed(2);
+    if (Math.abs(modVol - lastMasterVol) > 0.0001) {
+      engine.masterGain.gain.setValueAtTime(modVol, engine.audioCtx.currentTime);
+      lastMasterVol = modVol;
+    }
+    if (hasMasterVolTarget) {
+      getKnob('master-volume')?.setValue(modVol);
+      masterVolumeVal.textContent = modVol.toFixed(2);
+    }
 
     for (const item of drawList) {
       item.draw();
     }
   }
 
-  animate();
+  rafId = requestAnimationFrame(animate);
+
+  return () => {
+    cancelAnimationFrame(rafId);
+  };
 }

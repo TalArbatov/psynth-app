@@ -3,6 +3,7 @@ import type { SyncMessage } from './types.js';
 export interface SyncClient {
   send(msg: SyncMessage): void;
   onMessage(fn: (msg: SyncMessage) => void): void;
+  close(): void;
   readonly receiving: boolean;
 }
 
@@ -44,6 +45,10 @@ export function createSync(baseUrl?: string): SyncClient {
     },
     onMessage(fn: (msg: SyncMessage) => void) {
       _handlers.push(fn);
+    },
+    close() {
+      _handlers.length = 0;
+      ws.close();
     },
     get receiving() { return _receiving; }
   };

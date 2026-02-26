@@ -11,6 +11,8 @@ export function LoginPage() {
     const navigate = useNavigate();
     const { setUsername, setAccountId } = useAuth();
 
+    // remove this line
+    console.log('test')
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!email.trim() || !password) return;

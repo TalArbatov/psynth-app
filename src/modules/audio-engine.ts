@@ -82,17 +82,17 @@ export class AudioEngine {
   }
 
   setFilterCutoff(freq: number): void {
-    this.cutoff = freq;
-    this.filter.frequency.value = freq;
+    this.cutoff = Math.max(20, Math.min(20000, freq));
+    this.filter.frequency.value = this.cutoff;
   }
 
   setFilterResonance(q: number): void {
-    this.resonance = q;
-    this.filter.Q.value = q;
+    this.resonance = Math.max(0.1, Math.min(20, q));
+    this.filter.Q.value = this.resonance;
   }
 
   applyModulatedCutoff(freq: number): void {
-    this.filter.frequency.value = freq;
+    this.filter.frequency.value = Math.max(20, Math.min(20000, freq));
   }
 
   noteOn(freq: number): void {
@@ -112,5 +112,24 @@ export class AudioEngine {
   scheduleNote(freq: number, startTime: number, duration: number): () => void {
     const cancellers = this.voices.map(v => v.scheduleNote(freq, startTime, duration));
     return () => { for (const c of cancellers) c(); };
+  }
+
+  destroy(): void {
+    for (const voice of this.voices) {
+      for (const note of voice.activeNotes.values()) {
+        for (const osc of note.oscillators) {
+          try { osc.stop(); osc.disconnect(); } catch (_) { /* already stopped */ }
+        }
+        for (const p of note.panners) {
+          try { p.disconnect(); } catch (_) { /* already disconnected */ }
+        }
+        try { note.gainNode.disconnect(); } catch (_) { /* already disconnected */ }
+      }
+      voice.activeNotes.clear();
+    }
+    try { this.masterGain.disconnect(); } catch (_) { /* already disconnected */ }
+    try { this.filter.disconnect(); } catch (_) { /* already disconnected */ }
+    try { this.analyser.disconnect(); } catch (_) { /* already disconnected */ }
+    void this.audioCtx.close();
   }
 }

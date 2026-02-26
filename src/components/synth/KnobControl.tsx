@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { createKnob } from '../../modules/knob.js';
-import { registerKnob } from '../../modules/knob-registry.js';
+import { registerKnob, unregisterKnob } from '../../modules/knob-registry.js';
 import type { KnobInstance } from '../../modules/types.js';
 
 type KnobControlProps = {
@@ -46,12 +46,22 @@ export function KnobControl({
 
     knobRef.current = knob;
     registerKnob(id, knob);
-  }, [id, max, min, step, value]);
+
+    return () => {
+      knob.destroy?.();
+      unregisterKnob(id);
+      knobRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, min, max, step]);
 
   useEffect(() => {
     const knob = knobRef.current;
     const input = inputRef.current;
     if (!knob || !input) return;
+    // Skip redundant feedback while the user is actively dragging —
+    // the knob already updated itself imperatively in the mousemove handler.
+    if (knob.isDragging()) return;
     knob.setValue(value);
     input.value = String(value);
   }, [value]);

@@ -12,11 +12,19 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       proxy: {
+        '/api/v1/me': {
+          target: authTarget,
+          changeOrigin: true,
+        },
         '/api/v1/auth': {
           target: authTarget,
           changeOrigin: true,
         },
         '/api/v1/accounts': {
+          target: authTarget,
+          changeOrigin: true,
+        },
+        '/api/v1/account': {
           target: authTarget,
           changeOrigin: true,
         },

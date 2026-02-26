@@ -6,6 +6,8 @@ npm run build
 
 echo "Step 2 - copying the files to the server"
 
-scp -r /Users/tal/dev/psynth/psynth-web/dist root@64.176.164.119:/var/www/psynth
+ssh root@64.176.164.119 "rm -rf /var/www/psynth/*"
+
+scp -r /Users/tal/dev/psynth/psynth-webapp/dist/* root@64.176.164.119:/var/www/psynth
 
 echo "Deploy successful!"

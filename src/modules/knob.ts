@@ -1,4 +1,5 @@
 import type { KnobInstance, KnobOptions } from './types.js';
+import { activeTheme } from './theme.js';
 
 export function createKnob(
   canvas: HTMLCanvasElement,
@@ -39,7 +40,7 @@ export function createKnob(
     // Track (background arc)
     ctx.beginPath();
     ctx.arc(cx, cy, radius, startAngle, endAngle);
-    ctx.strokeStyle = '#2a2a34';
+    ctx.strokeStyle = activeTheme.knobTrack;
     ctx.lineWidth = arcWidth;
     ctx.lineCap = 'round';
     ctx.stroke();
@@ -50,7 +51,7 @@ export function createKnob(
     if (frac > 0.001) {
       ctx.beginPath();
       ctx.arc(cx, cy, radius, startAngle, valAngle);
-      ctx.strokeStyle = enabled ? '#00d2ff' : '#444';
+      ctx.strokeStyle = enabled ? activeTheme.accent : activeTheme.textFaint;
       ctx.lineWidth = arcWidth;
       ctx.lineCap = 'round';
       ctx.stroke();
@@ -61,7 +62,7 @@ export function createKnob(
     const dotY = cy + Math.sin(valAngle) * radius;
     ctx.beginPath();
     ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-    ctx.fillStyle = enabled ? '#00d2ff' : '#444';
+    ctx.fillStyle = enabled ? activeTheme.accent : activeTheme.textFaint;
     ctx.fill();
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = dotStroke;
@@ -69,7 +70,7 @@ export function createKnob(
 
     // Center label (only if formatLabel provided)
     if (formatLabel) {
-      ctx.fillStyle = '#5a5a65';
+      ctx.fillStyle = activeTheme.textSecondary;
       ctx.font = '9px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -127,33 +128,33 @@ export function createKnob(
   let dragStartY = 0;
   let dragStartValue = 0;
 
-  canvas.addEventListener('mousedown', e => {
+  function onCanvasMouseDown(e: MouseEvent): void {
     if (!enabled) return;
     dragging = true;
     dragStartY = e.clientY;
     dragStartValue = value;
     canvas.style.cursor = 'grabbing';
     e.preventDefault();
-  });
+  }
 
-  window.addEventListener('mousemove', e => {
+  function onWindowMouseMove(e: MouseEvent): void {
     if (!dragging) return;
     const dy = dragStartY - e.clientY; // up = positive
     const range = max - min;
     const sensitivity = range / 150; // 150px for full range
     setValue(dragStartValue + dy * sensitivity);
     commitValue();
-  });
+  }
 
-  window.addEventListener('mouseup', () => {
+  function onWindowMouseUp(): void {
     if (dragging) {
       dragging = false;
       canvas.style.cursor = enabled ? 'grab' : 'not-allowed';
     }
-  });
+  }
 
   // --- Touch interaction ---
-  canvas.addEventListener('touchstart', e => {
+  function onCanvasTouchStart(e: TouchEvent): void {
     if (!enabled) return;
     const t = e.touches[0];
     if (!t) return;
@@ -161,9 +162,9 @@ export function createKnob(
     dragStartY = t.clientY;
     dragStartValue = value;
     e.preventDefault();
-  });
+  }
 
-  canvas.addEventListener('touchmove', e => {
+  function onCanvasTouchMove(e: TouchEvent): void {
     if (!dragging) return;
     const t = e.touches[0];
     if (!t) return;
@@ -173,15 +174,31 @@ export function createKnob(
     const sensitivity = range / 150;
     setValue(dragStartValue + dy * sensitivity);
     commitValue();
-  });
+  }
 
-  window.addEventListener('touchend', () => {
+  function onWindowTouchEnd(): void {
     dragging = false;
-  });
+  }
+
+  canvas.addEventListener('mousedown', onCanvasMouseDown);
+  window.addEventListener('mousemove', onWindowMouseMove);
+  window.addEventListener('mouseup', onWindowMouseUp);
+  canvas.addEventListener('touchstart', onCanvasTouchStart);
+  canvas.addEventListener('touchmove', onCanvasTouchMove);
+  window.addEventListener('touchend', onWindowTouchEnd);
+
+  function destroy(): void {
+    canvas.removeEventListener('mousedown', onCanvasMouseDown);
+    window.removeEventListener('mousemove', onWindowMouseMove);
+    window.removeEventListener('mouseup', onWindowMouseUp);
+    canvas.removeEventListener('touchstart', onCanvasTouchStart);
+    canvas.removeEventListener('touchmove', onCanvasTouchMove);
+    window.removeEventListener('touchend', onWindowTouchEnd);
+  }
 
   // Initialize
   hiddenInput.value = String(value);
   draw();
 
-  return { draw, setValue, setEnabled, setModRings };
+  return { draw, setValue, setEnabled, setModRings, isDragging: () => dragging, destroy };
 }

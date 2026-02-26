@@ -1,5 +1,6 @@
 import { ADSR_MAX } from './constants.js';
 import type { ADSR, Drawable } from './types.js';
+import { activeTheme } from './theme.js';
 
 interface Point {
   x: number;
@@ -51,12 +52,12 @@ export function createADSRGraph(
     const pts = getPoints();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = '#0a1628';
+    ctx.fillStyle = activeTheme.bgGraph;
     ctx.beginPath();
     ctx.roundRect(0, 0, canvas.width, canvas.height, 6);
     ctx.fill();
 
-    ctx.strokeStyle = '#152040';
+    ctx.strokeStyle = activeTheme.grid;
     ctx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
       const y = pad.top + (plotH / 4) * i;
@@ -66,7 +67,7 @@ export function createADSRGraph(
       ctx.stroke();
     }
 
-    ctx.strokeStyle = '#152040';
+    ctx.strokeStyle = activeTheme.grid;
     ctx.setLineDash([3, 3]);
     for (const key of ['d', 's', 'r'] as const) {
       const x = pad.left + zones[key].start;
@@ -83,13 +84,13 @@ export function createADSRGraph(
     ctx.lineTo(pts[4].x, pad.top + plotH);
     ctx.lineTo(pts[0].x, pad.top + plotH);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(233, 69, 96, 0.12)';
+    ctx.fillStyle = `rgba(${activeTheme.signalRgb}, 0.12)`;
     ctx.fill();
 
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i <= 2; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.strokeStyle = '#e94560';
+    ctx.strokeStyle = activeTheme.signal;
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -97,7 +98,7 @@ export function createADSRGraph(
     ctx.moveTo(pts[2].x, pts[2].y);
     ctx.lineTo(pts[3].x, pts[3].y);
     ctx.setLineDash([5, 4]);
-    ctx.strokeStyle = '#e94560';
+    ctx.strokeStyle = activeTheme.signal;
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.setLineDash([]);
@@ -105,21 +106,21 @@ export function createADSRGraph(
     ctx.beginPath();
     ctx.moveTo(pts[3].x, pts[3].y);
     ctx.lineTo(pts[4].x, pts[4].y);
-    ctx.strokeStyle = '#e94560';
+    ctx.strokeStyle = activeTheme.signal;
     ctx.lineWidth = 2;
     ctx.stroke();
 
     for (const i of [1, 2, 4]) {
       ctx.beginPath();
       ctx.arc(pts[i].x, pts[i].y, 6, 0, Math.PI * 2);
-      ctx.fillStyle = '#e94560';
+      ctx.fillStyle = activeTheme.signal;
       ctx.fill();
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 2;
       ctx.stroke();
     }
 
-    ctx.fillStyle = '#445';
+    ctx.fillStyle = activeTheme.gridLabel;
     ctx.font = '9px sans-serif';
     ctx.textAlign = 'center';
     const ly = pad.top + plotH + 14;

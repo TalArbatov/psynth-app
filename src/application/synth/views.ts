@@ -39,7 +39,11 @@ export function createSynthViews(runtime: SynthRuntime) {
   const eqGraph = createEQGraph(byCanvasId('fx-eq-canvas'), fxChain.eq);
   const drawList = [waveform, keyboard, eqGraph, ...adsrGraphs];
 
-  return { adsrGraphs, keyboard, drawList };
+  function destroy(): void {
+    keyboard.destroy?.();
+  }
+
+  return { adsrGraphs, keyboard, drawList, destroy };
 }
 
 export type SynthViews = ReturnType<typeof createSynthViews>;

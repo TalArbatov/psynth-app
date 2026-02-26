@@ -10,22 +10,22 @@ import type { Drawable, PianoKeyboardView } from './types.js';
 import { getKnob } from './knob-registry.js';
 
 /** Attach outbound event delegation so local changes broadcast to peers. */
-export function initSyncOutbound(sync: SyncClient): void {
+export function initSyncOutbound(sync: SyncClient): () => void {
   // Sync standard inputs (ranges, number inputs) via event delegation
-  document.addEventListener('input', (e) => {
+  function onInput(e: Event): void {
     const target = e.target as HTMLInputElement;
     if (target.id && target.tagName !== 'SELECT' && !sync.receiving) {
       sync.send({ t: 'ctrl', id: target.id, v: target.value });
     }
-  }, true);
+  }
 
   // Sync selects via event delegation
-  document.addEventListener('change', (e) => {
+  function onChange(e: Event): void {
     const target = e.target as HTMLSelectElement;
     if (target.id && target.tagName === 'SELECT' && !sync.receiving) {
       sync.send({ t: 'ctrl', id: target.id, v: target.value });
     }
-  }, true);
+  }
 
   // Sync toggle buttons
   const syncedButtons = new Set([
@@ -40,12 +40,22 @@ export function initSyncOutbound(sync: SyncClient): void {
     }
   }
 
-  document.addEventListener('click', (e) => {
+  function onClick(e: MouseEvent): void {
     const target = e.target as HTMLElement;
     if (syncedButtons.has(target.id) && !sync.receiving) {
       sync.send({ t: 'click', id: target.id });
     }
-  }, true);
+  }
+
+  document.addEventListener('input', onInput, true);
+  document.addEventListener('change', onChange, true);
+  document.addEventListener('click', onClick, true);
+
+  return () => {
+    document.removeEventListener('input', onInput, true);
+    document.removeEventListener('change', onChange, true);
+    document.removeEventListener('click', onClick, true);
+  };
 }
 
 /**

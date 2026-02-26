@@ -1,4 +1,5 @@
 import type { Drawable } from './types.js';
+import { activeTheme } from './theme.js';
 
 export interface FilterSource {
   cutoff: number;
@@ -26,7 +27,7 @@ export function createFilterGraph(
   valuesEl: HTMLElement,
   source: FilterSource,
   onChange?: () => void
-): Drawable {
+): Drawable & { destroy(): void } {
   const tempCtx = canvas.getContext('2d');
   if (!tempCtx) {
     throw new Error('2D context is required for filter graph.');
@@ -76,12 +77,12 @@ export function createFilterGraph(
   function draw(): void {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = '#0a1628';
+    ctx.fillStyle = activeTheme.bgGraph;
     ctx.beginPath();
     ctx.roundRect(0, 0, canvas.width, canvas.height, 6);
     ctx.fill();
 
-    ctx.strokeStyle = '#152040';
+    ctx.strokeStyle = activeTheme.grid;
     ctx.lineWidth = 1;
     const dbSteps = [-20, -10, 0, 10];
     for (const db of dbSteps) {
@@ -91,13 +92,13 @@ export function createFilterGraph(
       ctx.lineTo(pad.left + plotW, y);
       ctx.stroke();
 
-      ctx.fillStyle = '#334';
+      ctx.fillStyle = activeTheme.gridLabel;
       ctx.font = '8px monospace';
       ctx.textAlign = 'right';
       ctx.fillText(`${db}`, pad.left - 4, y + 3);
     }
 
-    ctx.strokeStyle = '#152040';
+    ctx.strokeStyle = activeTheme.grid;
     ctx.setLineDash([3, 3]);
     const freqMarkers = [100, 1000, 10000];
     const freqLabels = ['100', '1k', '10k'];
@@ -108,7 +109,7 @@ export function createFilterGraph(
       ctx.lineTo(x, pad.top + plotH);
       ctx.stroke();
 
-      ctx.fillStyle = '#445';
+      ctx.fillStyle = activeTheme.gridLabel;
       ctx.font = '9px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(freqLabels[i], x, pad.top + plotH + 14);
@@ -131,7 +132,7 @@ export function createFilterGraph(
     ctx.lineTo(pad.left + plotW, pad.top + plotH);
     ctx.lineTo(pad.left, pad.top + plotH);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(233, 69, 96, 0.12)';
+    ctx.fillStyle = `rgba(${activeTheme.signalRgb}, 0.12)`;
     ctx.fill();
 
     ctx.beginPath();
@@ -142,14 +143,14 @@ export function createFilterGraph(
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
-    ctx.strokeStyle = '#e94560';
+    ctx.strokeStyle = activeTheme.signal;
     ctx.lineWidth = 2;
     ctx.stroke();
 
     const handle = getHandlePos();
     ctx.beginPath();
     ctx.arc(handle.x, handle.y, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#e94560';
+    ctx.fillStyle = activeTheme.signal;
     ctx.fill();
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;
@@ -211,12 +212,14 @@ export function createFilterGraph(
     applyDrag(pos);
   });
 
-  window.addEventListener('mouseup', () => {
+  function onWindowMouseUp(): void {
     if (dragging) {
       dragging = false;
       canvas.style.cursor = 'default';
     }
-  });
+  }
+
+  window.addEventListener('mouseup', onWindowMouseUp);
 
   canvas.addEventListener('touchstart', (e: TouchEvent) => {
     const t = e.touches[0];
@@ -240,6 +243,10 @@ export function createFilterGraph(
     dragging = false;
   });
 
+  function destroy(): void {
+    window.removeEventListener('mouseup', onWindowMouseUp);
+  }
+
   draw();
-  return { draw };
+  return { draw, destroy };
 }

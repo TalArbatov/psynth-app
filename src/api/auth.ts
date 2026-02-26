@@ -33,12 +33,13 @@ export async function register(
   username: string,
   email: string,
   password: string,
+  displayName: string,
 ): Promise<AuthUser> {
   const res = await fetch(authServiceUrl('/api/v1/accounts'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ username, email, password }),
+    body: JSON.stringify({ username, email, password, displayName }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => null);

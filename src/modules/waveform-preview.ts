@@ -1,3 +1,5 @@
+import { activeTheme } from './theme.js';
+
 type PreviewWaveform = OscillatorType;
 
 export function createWaveformPreview(canvas: HTMLCanvasElement) {
@@ -14,7 +16,7 @@ export function createWaveformPreview(canvas: HTMLCanvasElement) {
     ctx.clearRect(0, 0, w, h);
 
     // Background
-    ctx.fillStyle = '#0a1628';
+    ctx.fillStyle = activeTheme.bgGraph;
     ctx.beginPath();
     ctx.roundRect(0, 0, w, h, 4);
     ctx.fill();
@@ -26,7 +28,7 @@ export function createWaveformPreview(canvas: HTMLCanvasElement) {
     const midY = pad + plotH / 2;
 
     ctx.beginPath();
-    ctx.strokeStyle = '#00d2ff';
+    ctx.strokeStyle = activeTheme.accent;
     ctx.lineWidth = 1.5;
 
     for (let i = 0; i <= plotW; i++) {

@@ -33,11 +33,14 @@ export interface KnobInstance extends Drawable {
   setValue(value: number): void;
   setEnabled(flag: boolean): void;
   setModRings(rings: Array<{ amount: number; color: string }>): void;
+  isDragging(): boolean;
+  destroy?(): void;
 }
 
 export interface PianoKeyboardView extends Drawable {
   remoteNoteOn(freq: number): void;
   remoteNoteOff(freq: number): void;
+  destroy?(): void;
 }
 
 export interface EffectUnit<TParams> {
